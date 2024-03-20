@@ -1,6 +1,6 @@
 var parse = require("./javascript.js")
 
-let x = parse.parse("var sum = 0 \n for var i = 0; i < 10; i++{sum += i} \n sum")
+let x = parse.parse("const a = 10 \n for var i = 0; i < a; i++{}")
+console.log(x.body[1].test.right)
 
-console.log(x.body[2].expression)
 

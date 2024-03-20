@@ -161,13 +161,12 @@ Keyword
   / TryToken
   / TypeofToken
   / VarToken
+  / ConstToken
   / VoidToken
-  / WhileToken
   / WithToken
 
 FutureReservedWord
   = ClassToken
-  / ConstToken
   / EnumToken
   / ExportToken
   / ExtendsToken
@@ -433,7 +432,6 @@ TryToken        = "try"        !IdentifierPart
 TypeofToken     = "typeof"     !IdentifierPart
 VarToken        = "var"        !IdentifierPart
 VoidToken       = "void"       !IdentifierPart
-WhileToken      = "while"      !IdentifierPart
 WithToken       = "with"       !IdentifierPart
 
 // Skipped
@@ -938,6 +936,7 @@ ExpressionNoIn
 Statement
   = Block
   / VariableStatement
+  / ConstStatement
   / EmptyStatement
   / ExpressionStatement
   / IfStatement
@@ -969,6 +968,15 @@ VariableStatement
         type: "VariableDeclaration",
         declarations: declarations,
         kind: "var"
+      };
+    }
+
+ConstStatement
+  = ConstToken __ declarations:VariableDeclarationList EOS {
+      return {
+        type: "ConstDeclaration",
+        declarations: declarations,
+        kind: "const"
       };
     }
 
