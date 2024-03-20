@@ -1,0 +1,30 @@
+function in Go is called func, otherwise same
+var and const same
+
+- while loop is written as:
+for [statement] {
+    ...
+}
+- e.g. for instead of while and no parenthesis
+
+- if statements same but without parenthesis
+
+
+======= Concurrency ========
+- Create a new goroutine:
+go func()
+
+- Create a channel
+c:= make(chan, [type])
+
+- Send on channel
+c <- value
+
+- Create a Mutex
+mu = sync.Mutex
+
+- Lock a Mutex
+mu.Lock()
+
+- Unlock a Mutex
+mu.Unlock(  )

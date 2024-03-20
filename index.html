@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Machine for Go</title>
+</head>
+<body>
+    <div id="code-editor">
+        <button id="run-button" onclick="runEditor()">Run</button>
+        <textarea name="editor" id="editor" cols="100" rows="100"></textarea>
+    </div>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/@gopherjs/gopherjs/js/wasm_exec.js"></script>
+<script src="vm.js"></script>
+</html>
