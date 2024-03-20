@@ -32,25 +32,25 @@ PC:
 
 /* ================ HELPERS ================= */
 class Pair {
-    constructor(first, second){
-        this.first = first;
-        this.second = second;
+    constructor(frst, scnd){
+        this.frst = frst;
+        this.scnd = scnd;
     }
 
     get head(){
-        return this.first;
+        return this.frst;
     }
 
     get tail(){
-        return this.second;
+        return this.scnd;
     }
 
     set head(val){
-        this.first = val;
+        this.frst = val;
     }
 
     set tail(val){
-        this.second = val;
+        this.scnd = val;
     }
 }
 
@@ -59,26 +59,27 @@ INSTRUCTIONS = [];
 wc = 0;
 
 function compile_component(component) {
-    if (component.tag === "Literal"){
-        INSTRUCTIONS[wc++] = {tag: "LDC", val: component.value}
+    if (component.tag === "lit"){
+        INSTRUCTIONS[wc++] = {tag: "LDC", val: component.val}
     }
-    else if (component.tag === 'BinOp'){
-        compile_component(component.first);
-        compile_component(component.second);
-        INSTRUCTIONS[wc++] = {tag: 'BINOP', sym: component.sym}
+    else if (component.tag === "binop"){
+        compile_component(component.frst);
+        compile_component(component.scnd);
+        INSTRUCTIONS[wc++] = {tag: "BINOP", sym: component.sym}
     }
-    else if (component.tag === 'UnOp'){
-        compile_component(component.first);
-        INSTRUCTIONS[wc++] = {tag: 'UNOP', sym: component.sym}
+    else if (component.tag === "unop"){
+        compile_component(component.frst);
+        INSTRUCTIONS[wc++] = {tag: "UNOP", sym: component.sym}
     }
-    else if (component.tag === 'Seq'){
+    else if (component.tag === "seq"){
         sequence = component.stmts
         if (sequence.length === 0){
             INSTRUCTIONS[wc++] = {tag: "LDC", val:undefined}
+            console.log("MAYBE UNDEFINED");
         }
-        let first = true;
+        let frst = true;
         for (let seq_part of sequence){
-            first ? first = false : INSTRUCTIONS[wc++] = {tag: "POP"}
+            frst ? frst = false : INSTRUCTIONS[wc++] = {tag: "POP"}
             compile_component(seq_part)
         }
     }
@@ -97,6 +98,44 @@ function compile_component(component) {
         compile_component(component.alt);
         goto_instr.addr = wc;
     }
+    else if (component.tag === "App"){
+        compile_component(component.func);
+        for (let arg of component.args){
+            compile_component(arg);
+        }
+        INSTRUCTIONS[wc++] = {tag: "CALL", arity: component.args.length};
+    }
+    else if (component.tag === "Blk"){
+        const locals = scan(component.body);
+        INSTRUCTIONS[wc++] = {tag: "ENTER_SCOPE", syms: locals};
+        compile_component(component.body);
+        INSTRUCTIONS[wc++] = {tag: "EXIT_SCOPE"};
+    }
+    else if (component.tag === "Const"){
+        compile_component(component.expr);
+        INSTRUCTIONS[wc++] = {tag: "ASSIGN", sym: component.sym};
+    }
+    else {
+        throw TypeError(component.tag);
+    }
+
+}
+// Scan for declarations and return the names of all found
+// The component is either a sequence => Scan all parts of it
+// or a statement => Check to see if declaration ('const', 'var' or 'fun')
+function scan(component){
+    declarations = [];
+    // Is sequence: Scan every entry
+    if (component.tag === 'Seq'){
+        for (comp of component.stmts){
+            declarations.push(...scan(comp));
+        }
+    }
+    // Is not sequence: add symbol if a declaration
+    else if (['var', 'const', 'fun'].includes(component.tag)){
+        declarations.push(component.sym);
+    }
+    return declarations
 }
 
 function compile_program(program) {
@@ -121,7 +160,7 @@ const binop_microcode = {
 	">": (x, y) => x > y,
 	"===": (x, y) => x === y,
 	"!==": (x, y) => x !== y,
-    // Logical
+    // Logical binary operators
     "&&": (x, y) => x && y,
     "||": (x, y) => x ||y,
 };
@@ -133,12 +172,24 @@ const unop_microcode = {
 
 function lookup(symbol, environment){
     if(environment === null){
-        throw Error("Unbound name");
+        throw new Error(`Symbol ${symbol} does not exist in environment`);
     }
     if(environment.head.hasOwnProperty(symbol)){
         return environment.head[symbol];
     }
     return lookup(symbol, environment.tail);
+}
+
+function assign(symbol, value, environment){
+    if(environment === null){
+        throw new Error(`Symbol ${symbol} does not exist in environment`);
+    }
+    if(environment.head.hasOwnProperty(symbol)){
+        environment.head[symbol] = value;
+    }
+    else {
+        assign(symbol, value, environment.tail);
+    }
 }
 
 function execute_instruction(instruction) {
@@ -164,6 +215,12 @@ function execute_instruction(instruction) {
     else if(instruction.tag === "POP"){
         OS.pop();
     }
+    else if (instruction.tag === "ASSIGN"){
+        assign(instruction.sym, OS.slice(-1), E);
+    }
+    else {
+        throw new Error(`Undefined instruction: ${instruction.tag}`);
+    }
 }
 
 function initializeEmptyEnvironment(){
@@ -180,9 +237,11 @@ function run() {
         // Fetch next instruction and execute
         const instruction = INSTRUCTIONS[pc++];
         execute_instruction(instruction);
-        // Switch routine
+        console.log(instruction)
+        // TODO: Switch routine
     }
 }
+
 /* ============= RUN AND TESTS ============== */
 function compile_and_display(testcase) {
     compile_component(testcase);
@@ -190,14 +249,15 @@ function compile_and_display(testcase) {
 }
 
 /* === Test Cases === */
-test_binop = {tag: "BinOp", sym: "+", first: {tag: "Literal", value: 1}, second: {tag: "Literal", value: 1}}
-test_unop = {tag: "UnOp", sym: "!", first: {tag: "Literal", value: true}}
-test_seq = {tag: "Seq", stmts: [{tag: "Literal", value: 1}, {tag: "Literal", value: 2}]}
-test_ld = {tag: "Nam", sym: "y"}
-test_cond = {tag: 'Cond', pred: {tag: "BinOp", sym: "&&", first: {tag: "Literal", value: true}, second: {tag: "Literal", value: false}}, cons: {tag: undefined}, alt: {tag:undefined}}
+test_binop = {"tag": "binop", "sym": "+", "frst": {"tag": "lit", "val": 1}, "scnd": {"tag": "lit", "val": 1}}   // 1 + 1
+test_unop = {tag: "unop", sym: "!", frst: {tag: "lit", val: true}}  // !true
+test_seq = {"tag": "seq", "stmts": [{"tag": "lit", "val": 1}, {"tag": "lit", "val": 2}]}    // 1; 2;
+test_ld = {tag: "seq", stmts: [{tag: "Const", sym: "y", expr: {tag: "lit", val: 16}}, {tag: "Nam", sym: "y"}]}
+test_cond = {tag: 'Cond', pred: {tag: "binop", sym: "&&", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: undefined}, alt: {tag:undefined}}
+test_blk = {"tag": "Blk", "body": {tag: "seq", stmts: [{tag: "Const", sym: "y", expr: {tag: "lit", val: 1}}]}}
 
 /* ==== Run test ==== */
-test = test_cond;
+test = test_binop;
 compile_program(test);
 run();
 console.log(OS);
