@@ -121,7 +121,7 @@ const binop_microcode = {
 	">": (x, y) => x > y,
 	"===": (x, y) => x === y,
 	"!==": (x, y) => x !== y,
-    // Logical
+    // Logical binary operators
     "&&": (x, y) => x && y,
     "||": (x, y) => x ||y,
 };
