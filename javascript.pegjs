@@ -24,10 +24,10 @@
   function buildBinaryExpression(head, tail) {
     return tail.reduce(function(result, element) {
       return {
-        type: "BinaryExpression",
+        type: "binop",
         operator: element[1],
-        left: result,
-        right: element[3]
+        frst: result,
+        scnd: element[3]
       };
     }, head);
   }
@@ -181,11 +181,11 @@ Literal
   / RegularExpressionLiteral
 
 NullLiteral
-  = NullToken { return { type: "Literal", value: null }; }
+  = NullToken { return { type: "lit", val: null }; }
 
 BooleanLiteral
-  = TrueToken  { return { type: "Literal", value: true  }; }
-  / FalseToken { return { type: "Literal", value: false }; }
+  = TrueToken  { return { type: "lit", val: true  }; }
+  / FalseToken { return { type: "lit", val: false }; }
 
 // The "!(IdentifierStart / DecimalDigit)" predicate is not part of the official
 // grammar, it comes from text in section 7.8.3.
@@ -199,13 +199,13 @@ NumericLiteral "number"
 
 DecimalLiteral
   = DecimalIntegerLiteral "." DecimalDigit* ExponentPart? {
-      return { type: "Literal", value: parseFloat(text()) };
+      return { type: "lit", val: parseFloat(text()) };
     }
   / "." DecimalDigit+ ExponentPart? {
-      return { type: "Literal", value: parseFloat(text()) };
+      return { type: "lit", val: parseFloat(text()) };
     }
   / DecimalIntegerLiteral ExponentPart? {
-      return { type: "Literal", value: parseFloat(text()) };
+      return { type: "lit", val: parseFloat(text()) };
     }
 
 DecimalIntegerLiteral
@@ -229,7 +229,7 @@ SignedInteger
 
 HexIntegerLiteral
   = "0x"i digits:$HexDigit+ {
-      return { type: "Literal", value: parseInt(digits, 16) };
+      return { type: "lit", val: parseInt(digits, 16) };
      }
 
 HexDigit
@@ -237,10 +237,10 @@ HexDigit
 
 StringLiteral "string"
   = '"' chars:DoubleStringCharacter* '"' {
-      return { type: "Literal", value: chars.join("") };
+      return { type: "lit", val: chars.join("") };
     }
   / "'" chars:SingleStringCharacter* "'" {
-      return { type: "Literal", value: chars.join("") };
+      return { type: "lit", val: chars.join("") };
     }
 
 DoubleStringCharacter
@@ -306,7 +306,7 @@ RegularExpressionLiteral "regular expression"
         error(e.message);
       }
 
-      return { type: "Literal", value: value };
+      return { type: "literal", val: value };
     }
 
 RegularExpressionBody
@@ -518,7 +518,7 @@ PropertyNameAndValueList
 
 PropertyAssignment
   = key:PropertyName __ ":" __ value:AssignmentExpression {
-      return { type: "Property", key: key, value: value, kind: "init" };
+      return { type: "Property", key: key, val: value, kind: "init" };
     }
   / GetToken __ key:PropertyName __
     "(" __ ")" __
@@ -527,7 +527,7 @@ PropertyAssignment
       return {
         type: "Property",
         key: key,
-        value: {
+        val: {
           type: "FunctionExpression",
           id: null,
           params: [],
@@ -543,7 +543,7 @@ PropertyAssignment
       return {
         type: "Property",
         key: key,
-        value: {
+        val: {
           type: "FunctionExpression",
           id: null,
           params: params,
