@@ -256,11 +256,15 @@ test_ld = {tag: "seq", stmts: [{tag: "Const", sym: "y", expr: {tag: "lit", val: 
 test_cond = {tag: 'Cond', pred: {tag: "binop", sym: "&&", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: undefined}, alt: {tag:undefined}}
 test_blk = {"tag": "Blk", "body": {tag: "seq", stmts: [{tag: "Const", sym: "y", expr: {tag: "lit", val: 1}}]}}
 
+var parser = require("./Parser/javascript.js");
+let test = parser.parse("1;");
+console.log(test);
+
 /* ==== Run test ==== */
-test = test_binop;
-compile_program(test);
-run();
-console.log(OS);
+// test = test_binop;
+// compile_program(test);
+// run();
+// console.log(OS);
 // console.log(OS[OS.length-1]);
 
 /* ============= PLAYGROUND ============== */
