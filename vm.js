@@ -62,7 +62,6 @@ let INSTRUCTIONS = [];
 let wc = 0;
 
 function compile_component(component) {
-    console.log(component);
     if (component.tag === "lit"){
         INSTRUCTIONS[wc++] = {tag: "LDC", val: component.val}
     }
@@ -218,6 +217,7 @@ function lookup(symbol, environment){
         throw new Error(`Symbol ${symbol} does not exist in environment`);
     }
     if(environment.head.hasOwnProperty(symbol)){
+        console.log(`Will return ${environment.head[symbol]}`);
         return environment.head[symbol];
     }
     return lookup(symbol, environment.tail);
@@ -268,7 +268,7 @@ function execute_instruction(instruction) {
     }
     else if (instruction.tag === "ASSIGN"){
         // Assign last element on OS to symbol in env E
-        assign(instruction.sym, OS.slice(-1), E);
+        assign(instruction.sym, OS.slice(-1)[0], E);
     }
     else if (instruction.tag === "JOF"){
         if(!OS.pop()){
@@ -294,17 +294,18 @@ function execute_instruction(instruction) {
         E = RTS.pop().env;
     }
     else if (instruction.tag === "LDF"){
-        const closureTag = {tag: "CLOSURE", prms: instruction.prms, addr: instruction.addr, env: E};
+        var closureTag = {tag: "CLOSURE", prms: instruction.prms, addr: instruction.addr, env: E};
         OS.push(closureTag);
     }
     else if (instruction.tag === "CALL"){
         // On OS: all arguments above function itself
         // Load arguments backwards since pushed so
         const args = [];
-        for (let i=instruction.arity; i>=0; i--){
+        for (let i=instruction.arity-1; i>=0; i--){
             args[i] = OS.pop();
         }
         const funcToCall = OS.pop();
+        console.log(funcToCall);
         RTS.push({tag: "CALL_FRAME", addr: pc+1, env: E});
         E = extendEnvironment(funcToCall.prms, args, E);
         pc = funcToCall.addr;
@@ -338,7 +339,9 @@ function run() {
         execute_instruction(instruction);
         // console.log(instruction)
         // TODO: Switch routine
-        console.log(`OS length: ${OS.length} with ${OS.slice(-1)}`);
+        console.log(`Executed: ${instruction.tag} `);
+        console.log(`OS length: ${OS.length}`);
+        console.log(`Environment: ${E}`)
     }
 }
 
@@ -349,14 +352,14 @@ function compile_and_display(testcase) {
 }
 
 /* === Test Cases === */
-const test_binop = {"tag": "binop", "sym": "+", "frst": {"tag": "lit", "val": 1}, "scnd": {"tag": "lit", "val": 1}};  // 1 + 1
-const test_unop = {tag: "unop", sym: "!", frst: {tag: "lit", val: true}};  // !true
-const test_seq = {"tag": "seq", "stmts": [{"tag": "lit", "val": 1}, {"tag": "lit", "val": 2}]};    // 1; 2;
-const test_ld = {tag: "seq", stmts: [{tag: "const", sym: "y", expr: {tag: "lit", val: 16}}, {tag: "nam", sym: "y"}]};
-const test_blk = {"tag": "blk", "body": {tag: "seq", stmts: [{tag: "const", sym: "y", expr: {tag: "lit", val: 1}}]}};
-const test_cond2 = {"tag": "blk", "body": {"tag": "cond", "pred": {"tag": "binop", "sym": "||", "frst": {"tag": "lit", "val": true}, "scnd": {"tag": "lit", "val": false}}, "cons": {"tag": "lit", "val": 1}, "alt": {"tag": "lit", "val": 2}}}
-const test_cond = {tag: "seq", stmts: [{tag: "cond", pred: {tag: "binop", sym: "||", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: "lit", val: 1}, alt: {tag: "lit", val: 5}}, {tag: "lit", val: 3}]};
-const test_func = {"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}]}};
+const test_binop = {"tag": "binop", "sym": "+", "frst": {"tag": "lit", "val": 1}, "scnd": {"tag": "lit", "val": 1}};  // 1 + 1 Returns 2
+const test_unop = {tag: "unop", sym: "!", frst: {tag: "lit", val: true}};  // !true Returns false
+const test_seq = {"tag": "seq", "stmts": [{"tag": "lit", "val": 1}, {"tag": "lit", "val": 2}]};    // 1; 2; Returns 2
+const test_ld = {tag: "blk", body: {tag: "seq", stmts: [{tag: "const", sym: "y", expr: {tag: "lit", val: 16}}, {tag: "nam", sym: "y"}]}}; // Returns 16
+const test_blk = {"tag": "blk", "body": {tag: "seq", stmts: [{tag: "const", sym: "y", expr: {tag: "lit", val: 1}}]}};   // Returns 1
+const test_cond2 = {"tag": "blk", "body": {"tag": "cond", "pred": {"tag": "binop", "sym": "||", "frst": {"tag": "lit", "val": true}, "scnd": {"tag": "lit", "val": false}}, "cons": {"tag": "lit", "val": 1}, "alt": {"tag": "lit", "val": 2}}} // Retuns 1
+const test_cond = {tag: "seq", stmts: [{tag: "cond", pred: {tag: "binop", sym: "&&", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: "lit", val: 1}, alt: {tag: "lit", val: 5}}, {tag: "lit", val: 3}]}; // Returns 3
+const test_func = {"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}]}}; // Returns 1
 
 
 /* ==== Run test ==== */
@@ -374,8 +377,8 @@ function test(testcase, expected){
 
 /* === Function called from webpage === */
 export function parseInput(){
-    const testcase = test_func;
-    test(testcase, 1);
+    const testcase = test_ld;
+    test(testcase, 16);
 
     /*
     // Get text input
