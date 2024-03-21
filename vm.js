@@ -58,10 +58,11 @@ class Pair {
 }
 
 /* ================ COMPILER ================ */
-const INSTRUCTIONS = [];
+let INSTRUCTIONS = [];
 let wc = 0;
 
 function compile_component(component) {
+    console.log(component);
     if (component.tag === "lit"){
         INSTRUCTIONS[wc++] = {tag: "LDC", val: component.val}
     }
@@ -75,7 +76,7 @@ function compile_component(component) {
         INSTRUCTIONS[wc++] = {tag: "UNOP", sym: component.sym}
     }
     else if (component.tag === "seq"){
-        sequence = component.stmts
+        const sequence = component.stmts
         if (sequence.length === 0){
             INSTRUCTIONS[wc++] = {tag: "LDC", val:undefined}
             console.log("MAYBE UNDEFINED");
@@ -86,10 +87,10 @@ function compile_component(component) {
             compile_component(seq_part)
         }
     }
-    else if (component.tag === "Nam"){
+    else if (component.tag === "nam"){
         INSTRUCTIONS[wc++] = {tag: "LD", sym: component.sym}
     }
-    else if (component.tag === "Cond"){
+    else if (component.tag === "cond"){
         compile_component(component.pred);
         const jump_on_false_instr = {tag: "JOF"};
         INSTRUCTIONS[wc++] = jump_on_false_instr;
@@ -101,25 +102,58 @@ function compile_component(component) {
         compile_component(component.alt);
         goto_instr.addr = wc;
     }
-    else if (component.tag === "App"){
-        compile_component(component.func);
+    else if (component.tag === "app"){
+        compile_component(component.fun);
         for (let arg of component.args){
             compile_component(arg);
         }
         INSTRUCTIONS[wc++] = {tag: "CALL", arity: component.args.length};
     }
-    else if (component.tag === "Blk"){
+    else if (component.tag === "blk"){
         const locals = scan(component.body);
         INSTRUCTIONS[wc++] = {tag: "ENTER_SCOPE", syms: locals};
         compile_component(component.body);
         INSTRUCTIONS[wc++] = {tag: "EXIT_SCOPE"};
     }
-    else if (component.tag === "Const"){
+    else if (component.tag === "const"){
         compile_component(component.expr);
         INSTRUCTIONS[wc++] = {tag: "ASSIGN", sym: component.sym};
     }
+    else if (component.tag === "var"){
+        compile_component(component.expr);
+        INSTRUCTIONS[wc++] = {tag: "ASSIGN", sym: component.sym};
+    }
+    else if (component.tag === "ret"){
+        compile_component(component.expr);
+        INSTRUCTIONS[wc++] = {tag: "RESET"};
+    }
+    else if (component.tag === "fun"){
+        // Rewrite as a const declaration to a lambda function
+        compile_component({
+            tag: "const", 
+            sym: component.sym, 
+            expr: {
+                    tag: "lam", 
+                    prms: component.prms, 
+                    body: component.body
+                }
+            });
+    }
+    else if (component.tag === "lam"){
+        INSTRUCTIONS[wc++] = {tag: "LDF", prms: component.prms, addr: wc+1};
+        const goto_instr = {tag: "GOTO"};
+        INSTRUCTIONS[wc++] = goto_instr;
+        compile_component(component.body);
+        INSTRUCTIONS[wc++] = {tag: "LDC", val: undefined};
+        INSTRUCTIONS[wc++] = {tag: "RESET"};
+        goto_instr.addr = wc;
+    }
+    // Possibly add assignment if needed by anything later
+    else if (component.tag === undefined){
+        // Do nothing
+    }
     else {
-        throw TypeError(component.tag);
+        throw new TypeError(`Undefined tag: ${component.tag}`);
     }
 
 }
@@ -127,15 +161,15 @@ function compile_component(component) {
 // The component is either a sequence => Scan all parts of it
 // or a statement => Check to see if declaration ('const', 'var' or 'fun')
 function scan(component){
-    declarations = [];
+    const declarations = [];
     // Is sequence: Scan every entry
-    if (component.tag === 'Seq'){
-        for (comp of component.stmts){
+    if (component.tag === "seq"){
+        for (let comp of component.stmts){
             declarations.push(...scan(comp));
         }
     }
     // Is not sequence: add symbol if a declaration
-    else if (['var', 'const', 'fun'].includes(component.tag)){
+    else if (["var", "const", "fun"].includes(component.tag)){
         declarations.push(component.sym);
     }
     return declarations
@@ -151,6 +185,12 @@ function compile_program(program) {
 }
 
 /* ============= VIRTUAL MACHINE ============ */
+/* Define Data structures */
+let RTS = [];
+let OS = [];
+let E = initializeEmptyEnvironment();
+let pc = 0;
+
 const binop_microcode = {
 	"+": (x, y) => x + y,
 	"*": (x, y) => x * y,
@@ -195,6 +235,14 @@ function assign(symbol, value, environment){
     }
 }
 
+function extendEnvironment(names, values, env){
+    const newFrame = {};
+    for (let i=0; i<names.length;i++){
+        newFrame[names[i]] = values[i];
+    }
+    return new Pair(newFrame, env)
+}
+
 function execute_instruction(instruction) {
     if(instruction.tag === "LDC"){
         OS.push(instruction.val);
@@ -206,20 +254,67 @@ function execute_instruction(instruction) {
         const op1 = OS.pop();
         const op2 = OS.pop();
         const operand = instruction.sym;
-        res = binop_microcode[operand](op1, op2);
+        const res = binop_microcode[operand](op1, op2);
         OS.push(res);
     }
     else if(instruction.tag === "UNOP"){
         const op1 = OS.pop();
         const operand = instruction.sym;
-        res = unop_microcode[operand](op1);
+        const res = unop_microcode[operand](op1);
         OS.push(res);
     }
     else if(instruction.tag === "POP"){
         OS.pop();
     }
     else if (instruction.tag === "ASSIGN"){
+        // Assign last element on OS to symbol in env E
         assign(instruction.sym, OS.slice(-1), E);
+    }
+    else if (instruction.tag === "JOF"){
+        if(!OS.pop()){
+            pc = instruction.addr;  // Since we inc pc later, maybe -1?
+        }
+    }
+    else if (instruction.tag === "GOTO"){
+        pc = instruction.addr;
+    }
+    else if (instruction.tag === "ENTER_SCOPE"){
+        // Extend environment with new frame that includes all locals 
+        // assigned to unassigned
+        RTS.push({tag: "BLOCK_FRAME", env: E});
+        const locals = instruction.syms;
+        const new_frame = {};
+        for(let i=0; i<locals.length;i++){
+            new_frame[locals[i]] = {tag: "unassigned"};
+        }
+        E = new Pair(new_frame, E);
+    }
+    else if (instruction.tag === "EXIT_SCOPE"){
+        // Reset the previous environment from RTS
+        E = RTS.pop().env;
+    }
+    else if (instruction.tag === "LDF"){
+        const closureTag = {tag: "CLOSURE", prms: instruction.prms, addr: instruction.addr, env: E};
+        OS.push(closureTag);
+    }
+    else if (instruction.tag === "CALL"){
+        // On OS: all arguments above function itself
+        // Load arguments backwards since pushed so
+        const args = [];
+        for (let i=instruction.arity; i>=0; i--){
+            args[i] = OS.pop();
+        }
+        const funcToCall = OS.pop();
+        RTS.push({tag: "CALL_FRAME", addr: pc+1, env: E});
+        E = extendEnvironment(funcToCall.prms, args, E);
+        pc = funcToCall.addr;
+    }
+    else if (instruction.tag === "RESET"){
+        const topFrame = RTS.pop();
+        if (topFrame.tag === "CALL_FRAME"){
+            pc = topFrame.addr;
+            E = topFrame.env;
+        }
     }
     else {
         throw new Error(`Undefined instruction: ${instruction.tag}`);
@@ -236,12 +331,14 @@ function run() {
     E = initializeEmptyEnvironment();
     pc = 0;
 
+    console.log(INSTRUCTIONS);
     while (!(INSTRUCTIONS[pc].tag === "DONE")) {
         // Fetch next instruction and execute
         const instruction = INSTRUCTIONS[pc++];
         execute_instruction(instruction);
-        console.log(instruction)
+        // console.log(instruction)
         // TODO: Switch routine
+        console.log(`OS length: ${OS.length} with ${OS.slice(-1)}`);
     }
 }
 
@@ -252,32 +349,42 @@ function compile_and_display(testcase) {
 }
 
 /* === Test Cases === */
-const test_binop = {"tag": "binop", "sym": "+", "frst": {"tag": "lit", "val": 1}, "scnd": {"tag": "lit", "val": 1}}   // 1 + 1
-const test_unop = {tag: "unop", sym: "!", frst: {tag: "lit", val: true}}  // !true
-const test_seq = {"tag": "seq", "stmts": [{"tag": "lit", "val": 1}, {"tag": "lit", "val": 2}]}    // 1; 2;
-const test_ld = {tag: "seq", stmts: [{tag: "Const", sym: "y", expr: {tag: "lit", val: 16}}, {tag: "Nam", sym: "y"}]}
-const test_cond = {tag: 'Cond', pred: {tag: "binop", sym: "&&", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: undefined}, alt: {tag:undefined}}
-const test_blk = {"tag": "Blk", "body": {tag: "seq", stmts: [{tag: "Const", sym: "y", expr: {tag: "lit", val: 1}}]}}
+const test_binop = {"tag": "binop", "sym": "+", "frst": {"tag": "lit", "val": 1}, "scnd": {"tag": "lit", "val": 1}};  // 1 + 1
+const test_unop = {tag: "unop", sym: "!", frst: {tag: "lit", val: true}};  // !true
+const test_seq = {"tag": "seq", "stmts": [{"tag": "lit", "val": 1}, {"tag": "lit", "val": 2}]};    // 1; 2;
+const test_ld = {tag: "seq", stmts: [{tag: "const", sym: "y", expr: {tag: "lit", val: 16}}, {tag: "nam", sym: "y"}]};
+const test_blk = {"tag": "blk", "body": {tag: "seq", stmts: [{tag: "const", sym: "y", expr: {tag: "lit", val: 1}}]}};
+const test_cond2 = {"tag": "blk", "body": {"tag": "cond", "pred": {"tag": "binop", "sym": "||", "frst": {"tag": "lit", "val": true}, "scnd": {"tag": "lit", "val": false}}, "cons": {"tag": "lit", "val": 1}, "alt": {"tag": "lit", "val": 2}}}
+const test_cond = {tag: "seq", stmts: [{tag: "cond", pred: {tag: "binop", sym: "||", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: "lit", val: 1}, alt: {tag: "lit", val: 5}}, {tag: "lit", val: 3}]};
+const test_func = {"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}]}};
 
-let test = parse("1;");
-console.log(test);
 
-compile_and_display(test_binop);
+/* ==== Run test ==== */
+function test(testcase, expected){
+    compile_program(testcase);
+    run();
+    if (OS.slice(-1) == expected){
+        console.log(`SUCCESS! Got ${OS.slice(-1)} of type ${typeof OS.slice(-1)}. Expected ${expected} of type ${typeof expected}`)
+    }
+    else {
+        console.error(`FAILURE! Expected ${expected} got ${OS.slice(-1)}`)
+    }
+}
 
 
 /* === Function called from webpage === */
 export function parseInput(){
+    const testcase = test_func;
+    test(testcase, 1);
+
+    /*
+    // Get text input
     const input = document.getElementById("editor").value;
     console.log(input);
+    // Parse input
     let parsedInput = parse(input);
     console.log(parsedInput);
+    */
 }
-
-/* ==== Run test ==== */
-// test = test_binop;
-// compile_program(test);
-// run();
-// console.log(OS);
-// console.log(OS[OS.length-1]);
 
 /* ============= PLAYGROUND ============== */
