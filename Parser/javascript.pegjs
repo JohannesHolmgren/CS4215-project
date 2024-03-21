@@ -25,7 +25,7 @@
     return tail.reduce(function(result, element) {
       return {
         tag: "binop",
-        operator: element[1],
+        sym: element[1],
         frst: result,
         scnd: element[3]
       };
@@ -36,7 +36,7 @@
     return tail.reduce(function(result, element) {
       return {
         tag: "LogicalExpression",
-        operator: element[1],
+        sym: element[1],
         left: result,
         right: element[3]
       };
@@ -49,7 +49,7 @@
 }}
 
 Start
-  = __ program:Program __ { return program; }
+  = __ program:ProgramWrapped __ { return program; }
 
 // ----- A.1 Lexical Grammar -----
 
@@ -642,10 +642,10 @@ LeftHandSideExpression
   / NewExpression
 
 PostfixExpression
-  = argument:LeftHandSideExpression _ operator:PostfixOperator {
+  = argument:LeftHandSideExpression _ sym:PostfixOperator {
       return {
         tag: "UpdateExpression",
-        operator: operator,
+        sym: operator,
         argument: argument,
         prefix: false
       };
@@ -658,14 +658,14 @@ PostfixOperator
 
 UnaryExpression
   = PostfixExpression
-  / operator:UnaryOperator __ argument:UnaryExpression {
+  / sym:UnaryOperator __ argument:UnaryExpression {
       var type = (operator === "++" || operator === "--")
         ? "UpdateExpression"
         : "UnaryExpression";
 
       return {
         tag: type,
-        operator: operator,
+        sym: operator,
         argument: argument,
         prefix: true
       };
@@ -860,18 +860,18 @@ AssignmentExpression
     {
       return {
         tag: "AssignmentExpression",
-        operator: "=",
+        sym: "=",
         left: left,
         right: right
       };
     }
   / left:LeftHandSideExpression __
-    operator:AssignmentOperator __
+    sym:AssignmentOperator __
     right:AssignmentExpression
     {
       return {
         tag: "AssignmentExpression",
-        operator: operator,
+        sym: operator,
         left: left,
         right: right
       };
@@ -885,18 +885,18 @@ AssignmentExpressionNoIn
     {
       return {
         tag: "AssignmentExpression",
-        operator: "=",
+        sym: "=",
         left: left,
         right: right
       };
     }
   / left:LeftHandSideExpression __
-    operator:AssignmentOperator __
+    sym:AssignmentOperator __
     right:AssignmentExpressionNoIn
     {
       return {
         tag: "AssignmentExpression",
-        operator: operator,
+        sym: operator,
         left: left,
         right: right
       };
@@ -938,7 +938,6 @@ Statement
   / VariableStatement
   / ConstStatement
   / EmptyStatement
-  / ExpressionStatement
   / IfStatement
   / IterationStatement
   / ContinueStatement
@@ -954,7 +953,7 @@ Statement
 Block
   = "{" __ body:(StatementList __)? "}" {
       return {
-        tag: "BlockStatement",
+        tag: "blk",
         body: optionalList(extractOptional(body, 0))
       };
     }
@@ -1017,14 +1016,6 @@ InitialiserNoIn
 EmptyStatement
   = ";" { return { tag: "EmptyStatement" }; }
 
-ExpressionStatement
-  = !("{" / FunctionToken) expression:Expression EOS {
-      return {
-        tag: "ExpressionStatement",
-        expression: expression
-      };
-    }
-
 IfStatement
   = IfToken __ "(" __ test:Expression __ ")" __
     consequent:Statement __
@@ -1032,19 +1023,19 @@ IfStatement
     alternate:Statement
     {
       return {
-        tag: "IfStatement",
-        test: test,
-        consequent: consequent,
-        alternate: alternate
+        tag: "cond",
+        pred: test,
+        cons: consequent,
+        alt: alternate
       };
     }
   / IfToken __ "(" __ test:Expression __ ")" __
     consequent:Statement {
       return {
-        tag: "IfStatement",
-        test: test,
-        consequent: consequent,
-        alternate: null
+        tag: "cond",
+        pred: test,
+        cons: consequent,
+        alt: null
       };
     }
 
@@ -1292,6 +1283,16 @@ SourceElements
       return buildList(head, tail, 1);
     }
 
+ProgramWrapped
+  = prog:Program? {
+      return {
+        tag: "blk",
+        body: prog
+      };
+    }
+
+
 SourceElement
   = Statement
   / FunctionDeclaration
+  / Expression
