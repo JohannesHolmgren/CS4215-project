@@ -13,6 +13,10 @@
     return optional ? optional[index] : null;
   }
 
+  function extractExpr(obj){
+    return obj[0]['init'];
+  }
+
   function extractList(list, index) {
     return list.map(function(element) { return element[index]; });
   }
@@ -94,8 +98,8 @@ Identifier
 IdentifierName "identifier"
   = head:IdentifierStart tail:IdentifierPart* {
       return {
-        tag: "Identifier",
-        name: head + tail.join("")
+        tag: "nam",
+        sym: head
       };
     }
 
@@ -965,18 +969,18 @@ StatementList
 VariableStatement
   = VarToken __ declarations:VariableDeclarationList EOS {
       return {
-        tag: "VariableDeclaration",
-        declarations: declarations,
-        kind: "var"
+        tag: "var",
+        sym: declarations[0]['id']["sym"],
+        expr: declarations[0]['init']
       };
     }
 
 ConstStatement
   = ConstToken __ declarations:VariableDeclarationList EOS {
       return {
-        tag: "ConstDeclaration",
-        declarations: declarations,
-        kind: "const"
+        tag: "const",
+        sym: declarations[0]['sym'],
+        expr: declarations[0]['init']
       };
     }
 
