@@ -217,7 +217,6 @@ function lookup(symbol, environment){
         throw new Error(`Symbol ${symbol} does not exist in environment`);
     }
     if(environment.head.hasOwnProperty(symbol)){
-        console.log(`Will return ${environment.head[symbol]}`);
         return environment.head[symbol];
     }
     return lookup(symbol, environment.tail);
@@ -305,7 +304,6 @@ function execute_instruction(instruction) {
             args[i] = OS.pop();
         }
         const funcToCall = OS.pop();
-        console.log(funcToCall);
         RTS.push({tag: "CALL_FRAME", addr: pc+1, env: E});
         E = extendEnvironment(funcToCall.prms, args, E);
         pc = funcToCall.addr;
@@ -336,12 +334,10 @@ function run() {
     while (!(INSTRUCTIONS[pc].tag === "DONE")) {
         // Fetch next instruction and execute
         const instruction = INSTRUCTIONS[pc++];
+        console.log(`Executes: ${instruction.tag} `);
         execute_instruction(instruction);
         // console.log(instruction)
         // TODO: Switch routine
-        console.log(`Executed: ${instruction.tag} `);
-        console.log(`OS length: ${OS.length}`);
-        console.log(`Environment: ${E}`)
     }
 }
 
