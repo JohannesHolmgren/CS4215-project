@@ -10722,8 +10722,18 @@ function peg$parse(input, options) {
   }
 }
 
+
+
+/* Changed for being able to run in browser */
+/*
 module.exports = {
   StartRules: ["Start"],
   SyntaxError: peg$SyntaxError,
   parse: peg$parse
 };
+*/
+const StartRules = ["start"];
+const SyntaxError = peg$SyntaxError;
+const parse = peg$parse;
+
+export {StartRules, SyntaxError, parse};

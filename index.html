@@ -7,10 +7,14 @@
 </head>
 <body>
     <div id="code-editor">
-        <button id="run-button" onclick="runEditor()">Run</button>
-        <textarea name="editor" id="editor" cols="100" rows="100"></textarea>
+        <button id="run-button">Run</button>
+        <textarea name="editor" id="editor" cols="100" rows="40"></textarea>
     </div>
+    <script type="module">
+        import {parseInput} from "./vm.js";
+        document.getElementById("run-button").addEventListener("click", function(){
+            parseInput();
+        });
+    </script>
 </body>
-<script src="https://cdn.jsdelivr.net/npm/@gopherjs/gopherjs/js/wasm_exec.js"></script>
-<script src="vm.js"></script>
 </html>

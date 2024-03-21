@@ -29,6 +29,9 @@ ENVIRONMENT:
 PC:
 - Used in virtual machine
 */
+/* ============= DEPENDENCIES =============== */
+import {StartRules, SyntaxError, parse} from "./Parser/javascript.js";
+//var parser = require("./Parser/javascript.js")
 
 /* ================ HELPERS ================= */
 class Pair {
@@ -55,8 +58,8 @@ class Pair {
 }
 
 /* ================ COMPILER ================ */
-INSTRUCTIONS = [];
-wc = 0;
+const INSTRUCTIONS = [];
+let wc = 0;
 
 function compile_component(component) {
     if (component.tag === "lit"){
@@ -249,16 +252,26 @@ function compile_and_display(testcase) {
 }
 
 /* === Test Cases === */
-test_binop = {"tag": "binop", "sym": "+", "frst": {"tag": "lit", "val": 1}, "scnd": {"tag": "lit", "val": 1}}   // 1 + 1
-test_unop = {tag: "unop", sym: "!", frst: {tag: "lit", val: true}}  // !true
-test_seq = {"tag": "seq", "stmts": [{"tag": "lit", "val": 1}, {"tag": "lit", "val": 2}]}    // 1; 2;
-test_ld = {tag: "seq", stmts: [{tag: "Const", sym: "y", expr: {tag: "lit", val: 16}}, {tag: "Nam", sym: "y"}]}
-test_cond = {tag: 'Cond', pred: {tag: "binop", sym: "&&", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: undefined}, alt: {tag:undefined}}
-test_blk = {"tag": "Blk", "body": {tag: "seq", stmts: [{tag: "Const", sym: "y", expr: {tag: "lit", val: 1}}]}}
+const test_binop = {"tag": "binop", "sym": "+", "frst": {"tag": "lit", "val": 1}, "scnd": {"tag": "lit", "val": 1}}   // 1 + 1
+const test_unop = {tag: "unop", sym: "!", frst: {tag: "lit", val: true}}  // !true
+const test_seq = {"tag": "seq", "stmts": [{"tag": "lit", "val": 1}, {"tag": "lit", "val": 2}]}    // 1; 2;
+const test_ld = {tag: "seq", stmts: [{tag: "Const", sym: "y", expr: {tag: "lit", val: 16}}, {tag: "Nam", sym: "y"}]}
+const test_cond = {tag: 'Cond', pred: {tag: "binop", sym: "&&", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: undefined}, alt: {tag:undefined}}
+const test_blk = {"tag": "Blk", "body": {tag: "seq", stmts: [{tag: "Const", sym: "y", expr: {tag: "lit", val: 1}}]}}
 
-var parser = require("./Parser/javascript.js");
-let test = parser.parse("1;");
+let test = parse("1;");
 console.log(test);
+
+compile_and_display(test_binop);
+
+
+/* === Function called from webpage === */
+export function parseInput(){
+    const input = document.getElementById("editor").value;
+    console.log(input);
+    let parsedInput = parse(input);
+    console.log(parsedInput);
+}
 
 /* ==== Run test ==== */
 // test = test_binop;
