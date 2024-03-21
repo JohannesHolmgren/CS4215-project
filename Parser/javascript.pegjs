@@ -949,6 +949,7 @@ Statement
   / ThrowStatement
   / TryStatement
   / DebuggerStatement
+  / Expression
 
 Block
   = "{" __ body:(StatementList __)? "}" {
@@ -1017,7 +1018,7 @@ EmptyStatement
   = ";" { return { tag: "EmptyStatement" }; }
 
 IfStatement
-  = IfToken __ "(" __ test:Expression __ ")" __
+  = IfToken __ test:Expression __ 
     consequent:Statement __
     ElseToken __
     alternate:Statement
@@ -1029,7 +1030,7 @@ IfStatement
         alt: alternate
       };
     }
-  / IfToken __ "(" __ test:Expression __ ")" __
+  / IfToken __ test:Expression __ 
     consequent:Statement {
       return {
         tag: "cond",
@@ -1295,4 +1296,3 @@ ProgramWrapped
 SourceElement
   = Statement
   / FunctionDeclaration
-  / Expression
