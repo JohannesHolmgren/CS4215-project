@@ -30,7 +30,7 @@ PC:
 - Used in virtual machine
 */
 /* ============= DEPENDENCIES =============== */
-import {StartRules, SyntaxError, parse} from "./Parser/javascript.js";
+import {parse} from "./Parser/javascript.js";
 //var parser = require("./Parser/javascript.js")
 
 /* ================ HELPERS ================= */
@@ -374,8 +374,9 @@ function test(testcase, expected){
 /* === Function called from webpage === */
 export function parseInput(){
     const testcase = test_ld;
+    console.log("Done");
     test(testcase, 16);
-
+    
     /*
     // Get text input
     const input = document.getElementById("editor").value;
