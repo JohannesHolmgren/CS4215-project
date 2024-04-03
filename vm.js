@@ -31,6 +31,15 @@ PC:
 */
 /* ============= DEPENDENCIES =============== */
 import {parse} from "./Parser/javascript.js";
+import {heap_allocate_Environment,
+        compile_time_environment_position,
+        compile_time_environment_extend,
+        heap_set_Environment_value,
+        heap_get_Environment_value,
+        heap_Environment_extend,
+        heap_allocate_Frame,
+        heap_set_child
+    } from "./heap.js";
 //var parser = require("./Parser/javascript.js")
 
 /* ================ HELPERS ================= */
@@ -61,17 +70,17 @@ class Pair {
 let INSTRUCTIONS = [];
 let wc = 0;
 
-function compile_component(component) {
+function compile_component(component, compile_environment) {
     if (component.tag === "lit"){
         INSTRUCTIONS[wc++] = {tag: "LDC", val: component.val}
     }
     else if (component.tag === "binop"){
-        compile_component(component.frst);
-        compile_component(component.scnd);
+        compile_component(component.frst, compile_environment);
+        compile_component(component.scnd), compile_environment;
         INSTRUCTIONS[wc++] = {tag: "BINOP", sym: component.sym}
     }
     else if (component.tag === "unop"){
-        compile_component(component.frst);
+        compile_component(component.frst, compile_environment);
         INSTRUCTIONS[wc++] = {tag: "UNOP", sym: component.sym}
     }
     else if (component.tag === "seq"){
@@ -83,47 +92,56 @@ function compile_component(component) {
         let frst = true;
         for (let seq_part of sequence){
             frst ? frst = false : INSTRUCTIONS[wc++] = {tag: "POP"}
-            compile_component(seq_part)
+            compile_component(seq_part, compile_environment)
         }
     }
     else if (component.tag === "nam"){
-        INSTRUCTIONS[wc++] = {tag: "LD", sym: component.sym}
+        INSTRUCTIONS[wc++] = {
+            tag: "LD", 
+            sym: component.sym, 
+            pos: compile_time_environment_position(compile_environment, component.sym)
+        }
     }
     else if (component.tag === "cond"){
-        compile_component(component.pred);
+        compile_component(component.pred, compile_environment);
         const jump_on_false_instr = {tag: "JOF"};
         INSTRUCTIONS[wc++] = jump_on_false_instr;
-        compile_component(component.cons);
+        compile_component(component.cons, compile_environment);
         const goto_instr = {tag: "GOTO"};
         INSTRUCTIONS[wc++] = goto_instr;
         const alternative_address = wc;
         jump_on_false_instr.addr = alternative_address;
-        compile_component(component.alt);
+        compile_component(component.alt, compile_environment);
         goto_instr.addr = wc;
     }
     else if (component.tag === "app"){
-        compile_component(component.fun);
+        compile_component(component.fun, compile_environment);
         for (let arg of component.args){
-            compile_component(arg);
+            compile_component(arg, compile_environment);
         }
         INSTRUCTIONS[wc++] = {tag: "CALL", arity: component.args.length};
     }
     else if (component.tag === "blk"){
         const locals = scan(component.body);
-        INSTRUCTIONS[wc++] = {tag: "ENTER_SCOPE", syms: locals};
-        compile_component(component.body);
+        INSTRUCTIONS[wc++] = {tag: "ENTER_SCOPE", num: locals.length, syms: locals};
+        console.log(compile_environment);
+        compile_component(component.body, compile_time_environment_extend(locals, compile_environment));
         INSTRUCTIONS[wc++] = {tag: "EXIT_SCOPE"};
     }
     else if (component.tag === "const"){
-        compile_component(component.expr);
-        INSTRUCTIONS[wc++] = {tag: "ASSIGN", sym: component.sym};
+        compile_component(component.expr, compile_environment);
+        INSTRUCTIONS[wc++] = {
+            tag: "ASSIGN",
+            pos: compile_time_environment_position(compile_environment, component.sym)};
     }
     else if (component.tag === "var"){
-        compile_component(component.expr);
-        INSTRUCTIONS[wc++] = {tag: "ASSIGN", sym: component.sym};
+        compile_component(component.expr, compile_environment);
+        INSTRUCTIONS[wc++] = {
+            tag: "ASSIGN",
+            pos: compile_time_environment_position(compile_environment, component.sym)};
     }
     else if (component.tag === "ret"){
-        compile_component(component.expr);
+        compile_component(component.expr, compile_environment);
         INSTRUCTIONS[wc++] = {tag: "RESET"};
     }
     else if (component.tag === "fun"){
@@ -136,13 +154,13 @@ function compile_component(component) {
                     prms: component.prms, 
                     body: component.body
                 }
-            });
+            }, compile_environment);
     }
     else if (component.tag === "lam"){
-        INSTRUCTIONS[wc++] = {tag: "LDF", prms: component.prms, addr: wc+1};
+        INSTRUCTIONS[wc++] = {tag: "LDF", arity: component.arity, addr: wc+1};
         const goto_instr = {tag: "GOTO"};
         INSTRUCTIONS[wc++] = goto_instr;
-        compile_component(component.body);
+        compile_component(component.body, compile_time_environment_extend(component.prms, compile_environment));
         INSTRUCTIONS[wc++] = {tag: "LDC", val: undefined};
         INSTRUCTIONS[wc++] = {tag: "RESET"};
         goto_instr.addr = wc;
@@ -176,10 +194,12 @@ function scan(component){
 
 function compile_program(program) {
     // Reset instruction sequence
+    const primitive_frame = [];
+    const compile_environment = [primitive_frame];
     INSTRUCTIONS = [];
     wc = 0;
     // Compile program and end the machine code with DONE instruction
-    compile_component(program);
+    compile_component(program, compile_environment);
     INSTRUCTIONS[wc] = {tag: "DONE"};
 }
 
@@ -212,7 +232,10 @@ const unop_microcode = {
 	"!": (x) => !x,
 };
 
-function lookup(symbol, environment){
+function lookup(pos, environment){
+    return heap_get_Environment_value(environment, pos);
+
+    /*
     if(environment === null){
         throw new Error(`Symbol ${symbol} does not exist in environment`);
     }
@@ -220,26 +243,38 @@ function lookup(symbol, environment){
         return environment.head[symbol];
     }
     return lookup(symbol, environment.tail);
+    */
 }
 
-function assign(symbol, value, environment){
+function assign(pos, value, environment){
+
+    heap_set_Environment_value(environment, pos, value);
+
+    /*
     if(environment === null){
         throw new Error(`Symbol ${symbol} does not exist in environment`);
     }
+
     if(environment.head.hasOwnProperty(symbol)){
         environment.head[symbol] = value;
     }
     else {
         assign(symbol, value, environment.tail);
     }
+    */
 }
 
 function extendEnvironment(names, values, env){
+    const newFrame = heap_allocate_Frame(1);
+    return heap_Environment_extend(newFrame, env);
+
+    /*
     const newFrame = {};
     for (let i=0; i<names.length;i++){
         newFrame[names[i]] = values[i];
     }
     return new Pair(newFrame, env)
+    */
 }
 
 function execute_instruction(instruction) {
@@ -247,7 +282,7 @@ function execute_instruction(instruction) {
         OS.push(instruction.val);
     }
     else if(instruction.tag === "LD"){
-        OS.push(lookup(instruction.sym, E))
+        OS.push(lookup(instruction.pos, E))
     }
     else if(instruction.tag === "BINOP"){
         const op1 = OS.pop();
@@ -267,7 +302,8 @@ function execute_instruction(instruction) {
     }
     else if (instruction.tag === "ASSIGN"){
         // Assign last element on OS to symbol in env E
-        assign(instruction.sym, OS.slice(-1)[0], E);
+        assign(instruction.pos, OS.slice(-1)[0], E);
+        console.log(heap_get_Environment_value(E, instruction.pos));
     }
     else if (instruction.tag === "JOF"){
         if(!OS.pop()){
@@ -282,11 +318,20 @@ function execute_instruction(instruction) {
         // assigned to unassigned
         RTS.push({tag: "BLOCK_FRAME", env: E});
         const locals = instruction.syms;
+
+        const new_frame = heap_allocate_Frame(locals.length);
+        E = heap_Environment_extend(new_frame, E);
+        for (let i=0; i < locals.length; i++){
+            heap_set_child(new_frame, i, undefined);
+        }
+
+        /*
         const new_frame = {};
         for(let i=0; i<locals.length;i++){
             new_frame[locals[i]] = {tag: "unassigned"};
         }
         E = new Pair(new_frame, E);
+        */
     }
     else if (instruction.tag === "EXIT_SCOPE"){
         // Reset the previous environment from RTS
@@ -321,7 +366,7 @@ function execute_instruction(instruction) {
 }
 
 function initializeEmptyEnvironment(){
-    return new Pair({}, null);
+    return heap_allocate_Environment(0);
 }
 
 function run() {
@@ -362,6 +407,7 @@ const test_func = {"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun",
 function test(testcase, expected){
     compile_program(testcase);
     run();
+    console.log(OS);
     if (OS.slice(-1) == expected){
         console.log(`SUCCESS! Got ${OS.slice(-1)} of type ${typeof OS.slice(-1)}. Expected ${expected} of type ${typeof expected}`)
     }
@@ -373,10 +419,9 @@ function test(testcase, expected){
 
 /* === Function called from webpage === */
 export function parseInput(){
-    const testcase = test_ld;
-    console.log("Done");
-    test(testcase, 16);
-    
+    const testcase = test_func;
+    test(testcase, 2);
+
     /*
     // Get text input
     const input = document.getElementById("editor").value;

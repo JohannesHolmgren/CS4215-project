@@ -10636,8 +10636,15 @@ function peg$parse(input, options) {
   }
 }
 
+
+/*
 module.exports = {
   StartRules: ["Start"],
   SyntaxError: peg$SyntaxError,
   parse: peg$parse
 };
+*/
+
+const parse = peg$parse;
+
+export {parse};
