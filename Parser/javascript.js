@@ -768,7 +768,7 @@ function peg$parse(input, options) {
     };
   var peg$f82 = function(left, right) {
       return {
-        tag: "AssignmentExpression",
+        tag: "assmt",
         sym: "=",
         left: left,
         right: right

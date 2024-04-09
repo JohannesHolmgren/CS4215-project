@@ -869,7 +869,7 @@ AssignmentExpression
     right:AssignmentExpression
     {
       return {
-        tag: "AssignmentExpression",
+        tag: "assmt",
         sym: "=",
         left: left,
         right: right
