@@ -169,6 +169,7 @@ Keyword
   / VoidToken
   / WithToken
   / GoToken
+  / MakeToken
 
 FutureReservedWord
   = ClassToken
@@ -184,6 +185,8 @@ Literal
   / NumericLiteral
   / StringLiteral
   / RegularExpressionLiteral
+  / MakeStatement
+  
 
 NullLiteral
   = NullToken { return { tag: "lit", val: null }; }
@@ -439,6 +442,7 @@ VarToken        = "var"        !IdentifierPart
 VoidToken       = "void"       !IdentifierPart
 WithToken       = "with"       !IdentifierPart
 GoToken         = "go"         !IdentifierPart
+MakeToken       = "make"       !IdentifierPart
 
 // Skipped
 
@@ -1304,6 +1308,13 @@ GoStatement
       return {
         tag: "GoRoutine",
         function: declarations,
+      };
+    }
+
+MakeStatement
+  = MakeToken __ "(" __ "chan" __  ")" __ EOS {
+      return {
+        tag: "MakeChannel",
       };
     }
 
