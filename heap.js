@@ -85,7 +85,7 @@ const heap_get_size = (address) =>
 // except for number nodes:
 //                 they have size 2 but no children
 const heap_get_number_of_children = (address) =>
-	heap_get_tag(address) === Number_tag ? 0 : get_size(address) - 1;
+	heap_get_tag(address) === Number_tag ? 0 : heap_get_size(address) - 1;
 
 // access byte in heap, using address and offset
 const heap_set_byte_at_offset = (address, offset, value) =>
@@ -299,14 +299,14 @@ const heap_allocate_Frame = (number_of_values) =>
 	heap_allocate(Frame_tag, number_of_values + 1);
 
 const heap_Frame_display = (address) => {
-	display("", "Frame:");
+	console.log("Frame: ");
 	const size = heap_get_number_of_children(address);
-	display(size, "frame size:");
+	console.log(`frame size: ${size}`);
 	for (let i = 0; i < size; i++) {
-		display(i, "value address:");
+		console.log(`value address: ${i}`);
 		const value = heap_get_child(address, i);
-		display(value, "value:");
-		display(word_to_string(value), "value word:");
+		console.log(`value: ${value}`);
+		console.log(`value word: ${word_to_string(value)}`);
 	}
 };
 
@@ -352,13 +352,28 @@ const heap_Environment_extend = (frame_address, env_address) => {
 	return new_env_address;
 };
 
+// Added to handle goroutines
+// Copy an environment by doing like the above 
+// but without extending it
+const heap_Environment_copy = (env_address) => {
+	const old_size = heap_get_size(env_address);
+	const new_env_address = heap_allocate_Environment(old_size - 1);
+	let i;
+	for (i = 0; i < old_size - 1; i++) {
+		heap_set_child(new_env_address, i, heap_get_child(env_address, i));
+	}
+	// heap_Environment_display(env_address);
+	// heap_Environment_display(new_env_address);
+	return new_env_address;
+}
+
 // for debuggging: display environment
 const heap_Environment_display = (env_address) => {
 	const size = heap_get_number_of_children(env_address);
-	display("", "Environment:");
-	display(size, "environment size:");
+	console.log("Environment: ");
+	console.log(`environment size: ${size}`);
 	for (let i = 0; i < size; i++) {
-		display(i, "frame index:");
+		(`frame index: ${i}`);
 		const frame = heap_get_child(env_address, i);
 		heap_Frame_display(frame);
 	}
@@ -538,7 +553,7 @@ const compile_time_environment_extend = (vs, e) => {
 	return push([...e], vs);
 };
 
-// compile-time frames only need synbols (keys), no values
+/* // compile-time frames only need synbols (keys), no values
 const global_compile_frame = Object.keys(primitive_object);
 const global_compile_environment = [global_compile_frame];
 
@@ -550,7 +565,7 @@ let new_env = compile_time_environment_extend(prms, global_compile_environment);
 
 const empty_frame_address = heap_allocate_Frame(1);
 const heap_empty_Environment = heap_allocate_Environment(0);
-const environment = heap_Environment_extend(empty_frame_address, heap_empty_Environment);
+const environment = heap_Environment_extend(empty_frame_address, heap_empty_Environment); */
 
 export {heap_allocate_Environment,
 		compile_time_environment_position,
@@ -567,5 +582,6 @@ export {heap_allocate_Environment,
 		heap_allocate_Blockframe,
 		is_Callframe,
 		heap_get_Callframe_pc,
-		heap_get_Callframe_environment
+		heap_get_Callframe_environment,
+		heap_Environment_copy
 };
