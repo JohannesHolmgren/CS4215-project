@@ -13,10 +13,6 @@
     return optional ? optional[index] : null;
   }
 
-  function extractExpr(obj){
-    return obj[0]['init'];
-  }
-
   function extractList(list, index) {
     return list.map(function(element) { return element[index]; });
   }
@@ -29,7 +25,7 @@
     return tail.reduce(function(result, element) {
       return {
         tag: "binop",
-        sym: element[1],
+        operator: element[1],
         frst: result,
         scnd: element[3]
       };
@@ -40,7 +36,7 @@
     return tail.reduce(function(result, element) {
       return {
         tag: "LogicalExpression",
-        sym: element[1],
+        operator: element[1],
         left: result,
         right: element[3]
       };
@@ -53,7 +49,7 @@
 }}
 
 Start
-  = __ program:ProgramWrapped __ { return program; }
+  = __ program:Program __ { return program; }
 
 // ----- A.1 Lexical Grammar -----
 
@@ -98,8 +94,8 @@ Identifier
 IdentifierName "identifier"
   = head:IdentifierStart tail:IdentifierPart* {
       return {
-        tag: "nam",
-        sym: head
+        tag: "Identifier",
+        name: head + tail.join("")
       };
     }
 
@@ -437,6 +433,7 @@ TypeofToken     = "typeof"     !IdentifierPart
 VarToken        = "var"        !IdentifierPart
 VoidToken       = "void"       !IdentifierPart
 WithToken       = "with"       !IdentifierPart
+GoToken         = "go"         !IdentifierPart
 
 // Skipped
 
@@ -601,7 +598,7 @@ NewExpression
 CallExpression
   = head:(
       callee:MemberExpression __ args:Arguments {
-        return { tag: "app", callee: callee, arguments: args };
+        return { tag: "CallExpression", callee: callee, arguments: args };
       }
     )
     tail:(
@@ -646,10 +643,10 @@ LeftHandSideExpression
   / NewExpression
 
 PostfixExpression
-  = argument:LeftHandSideExpression _ sym:PostfixOperator {
+  = argument:LeftHandSideExpression _ operator:PostfixOperator {
       return {
         tag: "UpdateExpression",
-        sym: operator,
+        operator: operator,
         argument: argument,
         prefix: false
       };
@@ -662,14 +659,14 @@ PostfixOperator
 
 UnaryExpression
   = PostfixExpression
-  / sym:UnaryOperator __ argument:UnaryExpression {
+  / operator:UnaryOperator __ argument:UnaryExpression {
       var type = (operator === "++" || operator === "--")
         ? "UpdateExpression"
         : "UnaryExpression";
 
       return {
         tag: type,
-        sym: operator,
+        operator: operator,
         argument: argument,
         prefix: true
       };
@@ -864,18 +861,18 @@ AssignmentExpression
     {
       return {
         tag: "AssignmentExpression",
-        sym: "=",
+        operator: "=",
         left: left,
         right: right
       };
     }
   / left:LeftHandSideExpression __
-    sym:AssignmentOperator __
+    operator:AssignmentOperator __
     right:AssignmentExpression
     {
       return {
         tag: "AssignmentExpression",
-        sym: operator,
+        operator: operator,
         left: left,
         right: right
       };
@@ -889,18 +886,18 @@ AssignmentExpressionNoIn
     {
       return {
         tag: "AssignmentExpression",
-        sym: "=",
+        operator: "=",
         left: left,
         right: right
       };
     }
   / left:LeftHandSideExpression __
-    sym:AssignmentOperator __
+    operator:AssignmentOperator __
     right:AssignmentExpressionNoIn
     {
       return {
         tag: "AssignmentExpression",
-        sym: operator,
+        operator: operator,
         left: left,
         right: right
       };
@@ -942,6 +939,7 @@ Statement
   / VariableStatement
   / ConstStatement
   / EmptyStatement
+  / ExpressionStatement
   / IfStatement
   / IterationStatement
   / ContinueStatement
@@ -953,12 +951,12 @@ Statement
   / ThrowStatement
   / TryStatement
   / DebuggerStatement
-  / Expression
+  / GoStatement
 
 Block
   = "{" __ body:(StatementList __)? "}" {
       return {
-        tag: "blk",
+        tag: "BlockStatement",
         body: optionalList(extractOptional(body, 0))
       };
     }
@@ -969,18 +967,18 @@ StatementList
 VariableStatement
   = VarToken __ declarations:VariableDeclarationList EOS {
       return {
-        tag: "var",
-        sym: declarations[0]['id']["sym"],
-        expr: declarations[0]['init']
+        tag: "VariableDeclaration",
+        declarations: declarations,
+        kind: "var"
       };
     }
 
 ConstStatement
   = ConstToken __ declarations:VariableDeclarationList EOS {
       return {
-        tag: "const",
-        sym: declarations[0]['sym'],
-        expr: declarations[0]['init']
+        tag: "ConstDeclaration",
+        declarations: declarations,
+        kind: "const"
       };
     }
 
@@ -1021,26 +1019,35 @@ InitialiserNoIn
 EmptyStatement
   = ";" { return { tag: "EmptyStatement" }; }
 
+ExpressionStatement
+  = !("{" / FunctionToken) expression:Expression EOS {
+      return {
+        tag: "ExpressionStatement",
+        expression: expression
+      };
+    }
+    
+
 IfStatement
-  = IfToken __ test:Expression __ 
+  = IfToken __ "(" __ test:Expression __ ")" __
     consequent:Statement __
     ElseToken __
     alternate:Statement
     {
       return {
-        tag: "cond",
-        pred: test,
-        cons: consequent,
-        alt: alternate
+        tag: "IfStatement",
+        test: test,
+        consequent: consequent,
+        alternate: alternate
       };
     }
-  / IfToken __ test:Expression __ 
+  / IfToken __ "(" __ test:Expression __ ")" __
     consequent:Statement {
       return {
-        tag: "cond",
-        pred: test,
-        cons: consequent,
-        alt: null
+        tag: "IfStatement",
+        test: test,
+        consequent: consequent,
+        alternate: null
       };
     }
 
@@ -1249,6 +1256,8 @@ FunctionDeclaration
       };
     }
 
+
+
 FunctionExpression
   = FunctionToken __ id:(Identifier __)?
     "(" __ params:(FormalParameterList __)? ")" __
@@ -1261,6 +1270,7 @@ FunctionExpression
         body: body
       };
     }
+
 
 FormalParameterList
   = head:Identifier tail:(__ "," __ Identifier)* {
@@ -1288,15 +1298,15 @@ SourceElements
       return buildList(head, tail, 1);
     }
 
-ProgramWrapped
-  = prog:Program? {
+GoStatement
+  = GoToken __ declarations:CallExpression EOS {
       return {
-        tag: "blk",
-        body: prog
+        tag: "GoRoutine",
+        function: declarations,
       };
     }
-
 
 SourceElement
   = Statement
   / FunctionDeclaration
+  / Expression
