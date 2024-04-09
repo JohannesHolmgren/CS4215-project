@@ -170,6 +170,7 @@ Keyword
   / WithToken
   / GoToken
   / MakeToken
+  / ArrowToken
 
 FutureReservedWord
   = ClassToken
@@ -443,6 +444,7 @@ VoidToken       = "void"       !IdentifierPart
 WithToken       = "with"       !IdentifierPart
 GoToken         = "go"         !IdentifierPart
 MakeToken       = "make"       !IdentifierPart
+ArrowToken      = "<-"         !IdentifierPart
 
 // Skipped
 
@@ -863,6 +865,7 @@ ConditionalExpressionNoIn
     }
   / LogicalORExpressionNoIn
 
+
 AssignmentExpression
   = left:LeftHandSideExpression __
     "=" !"=" __
@@ -959,6 +962,7 @@ Statement
   / ThrowStatement
   / TryStatement
   / DebuggerStatement
+  / ArrowStatement
   / Expression
   / GoStatement
 
@@ -969,6 +973,7 @@ Block
         body: optionalList(extractOptional(body, 0))
       };
     }
+
 
 StatementList
   = head:Statement tail:(__ Statement)* { return buildList(head, tail, 1); }
@@ -1315,6 +1320,17 @@ MakeStatement
   = MakeToken __ "(" __ "chan" __  ")" __ EOS {
       return {
         tag: "MakeChannel",
+      };
+    }
+
+ArrowStatement
+ =  left:LeftHandSideExpression __ ArrowToken __
+    right:AssignmentExpression
+    {
+      return {
+        tag: "Arrow",
+        left: left,
+        right: right
       };
     }
 

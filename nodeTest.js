@@ -3,7 +3,7 @@ var parse2 = require("./Parser/javascript.js")
 
 // let s = "function(x){}"
 // let s = "make( chan )"
-let s = "x = 10"
+let s = "if (10 > 1){}"
 
 let y = parse2.parse(s)
-console.log(JSON.stringify(y['body']['stmts'][0], null, 2))
+console.log(JSON.stringify(y, null, 2))
