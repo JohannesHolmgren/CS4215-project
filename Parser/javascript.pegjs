@@ -99,7 +99,7 @@ IdentifierName "identifier"
   = head:IdentifierStart tail:IdentifierPart* {
       return {
         tag: "nam",
-        sym: head
+        sym: head + tail.join("") //THIS MIGHT CAUSE MAJOR ISSUES!
       };
     }
 
@@ -603,7 +603,7 @@ NewExpression
 CallExpression
   = head:(
       callee:MemberExpression __ args:Arguments {
-        return { tag: "app", callee: callee, arguments: args };
+        return { tag: "app", fun: callee, arguments: args };
       }
     )
     tail:(

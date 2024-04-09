@@ -524,7 +524,7 @@ function peg$parse(input, options) {
   var peg$f2 = function(head, tail) {
       return {
         tag: "nam",
-        sym: head
+        sym: head + tail.join("") //THIS MIGHT CAUSE MAJOR ISSUES!
       };
     };
   var peg$f3 = function(sequence) { return sequence; };
@@ -676,7 +676,7 @@ function peg$parse(input, options) {
       return { tag: "NewExpression", callee: callee, arguments: [] };
     };
   var peg$f53 = function(callee, args) {
-        return { tag: "app", callee: callee, arguments: args };
+        return { tag: "app", fun: callee, arguments: args };
       };
   var peg$f54 = function(head, args) {
           return { tag: "CallExpression", arguments: args };
