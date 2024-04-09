@@ -332,8 +332,6 @@ const heap_set_Environment_value = (env_address, position, value) => {
 	const [frame_index, value_index] = position;
 	const frame_address = heap_get_child(env_address, frame_index);
 	heap_set_child(frame_address, value_index, value);
-	console.log(value);
-	console.log(heap_get_Environment_value(env_address, position));
 };
 
 // extend a given environment by a new frame:
@@ -561,5 +559,13 @@ export {heap_allocate_Environment,
 		heap_get_Environment_value,
 		heap_Environment_extend,
 		heap_allocate_Frame,
-		heap_set_child
+		heap_set_child,
+		heap_allocate_Closure,
+		heap_allocate_Callframe,
+		heap_get_Closure_environment,
+		heap_get_Closure_pc,
+		heap_allocate_Blockframe,
+		is_Callframe,
+		heap_get_Callframe_pc,
+		heap_get_Callframe_environment
 };

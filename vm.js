@@ -38,7 +38,15 @@ import {heap_allocate_Environment,
         heap_get_Environment_value,
         heap_Environment_extend,
         heap_allocate_Frame,
-        heap_set_child
+        heap_set_child,
+        heap_allocate_Closure,
+        heap_allocate_Callframe,
+        heap_get_Closure_environment,
+        heap_get_Closure_pc,
+        heap_allocate_Blockframe,
+        is_Callframe,
+        heap_get_Callframe_pc,
+        heap_get_Callframe_environment
     } from "./heap.js";
 //var parser = require("./Parser/javascript.js")
 
@@ -234,6 +242,7 @@ const unop_microcode = {
 
 function lookup(pos, environment){
     return heap_get_Environment_value(environment, pos);
+    
 
     /*
     if(environment === null){
@@ -247,7 +256,6 @@ function lookup(pos, environment){
 }
 
 function assign(pos, value, environment){
-
     heap_set_Environment_value(environment, pos, value);
 
     /*
@@ -264,8 +272,12 @@ function assign(pos, value, environment){
     */
 }
 
-function extendEnvironment(names, values, env){
-    const newFrame = heap_allocate_Frame(1);
+function extendEnvironment(values, env){
+    const arity = values.length;
+    const newFrame = heap_allocate_Frame(arity);
+    for (let i = 0; i < arity; i++){
+        heap_set_child(newFrame, i, values[i]);
+    }
     return heap_Environment_extend(newFrame, env);
 
     /*
@@ -303,7 +315,6 @@ function execute_instruction(instruction) {
     else if (instruction.tag === "ASSIGN"){
         // Assign last element on OS to symbol in env E
         assign(instruction.pos, OS.slice(-1)[0], E);
-        console.log(heap_get_Environment_value(E, instruction.pos));
     }
     else if (instruction.tag === "JOF"){
         if(!OS.pop()){
@@ -316,12 +327,10 @@ function execute_instruction(instruction) {
     else if (instruction.tag === "ENTER_SCOPE"){
         // Extend environment with new frame that includes all locals 
         // assigned to unassigned
-        RTS.push({tag: "BLOCK_FRAME", env: E});
-        const locals = instruction.syms;
-
-        const new_frame = heap_allocate_Frame(locals.length);
+        RTS.push(heap_allocate_Blockframe(E));
+        const new_frame = heap_allocate_Frame(instruction.num);
         E = heap_Environment_extend(new_frame, E);
-        for (let i=0; i < locals.length; i++){
+        for (let i=0; i < instruction.num; i++){
             heap_set_child(new_frame, i, undefined);
         }
 
@@ -338,8 +347,10 @@ function execute_instruction(instruction) {
         E = RTS.pop().env;
     }
     else if (instruction.tag === "LDF"){
-        var closureTag = {tag: "CLOSURE", prms: instruction.prms, addr: instruction.addr, env: E};
-        OS.push(closureTag);
+        const arity = instruction.arity;
+        const address = instruction.addr;
+        const closure_address = heap_allocate_Closure(arity, address, E)
+        OS.push(closure_address);
     }
     else if (instruction.tag === "CALL"){
         // On OS: all arguments above function itself
@@ -349,15 +360,17 @@ function execute_instruction(instruction) {
             args[i] = OS.pop();
         }
         const funcToCall = OS.pop();
-        RTS.push({tag: "CALL_FRAME", addr: pc+1, env: E});
-        E = extendEnvironment(funcToCall.prms, args, E);
-        pc = funcToCall.addr;
+        const callFrame = heap_allocate_Callframe(E, pc);
+        RTS.push(callFrame);
+        E = extendEnvironment(args, heap_get_Closure_environment(funcToCall));
+        pc = heap_get_Closure_pc(funcToCall);
     }
     else if (instruction.tag === "RESET"){
+        pc--;
         const topFrame = RTS.pop();
-        if (topFrame.tag === "CALL_FRAME"){
-            pc = topFrame.addr;
-            E = topFrame.env;
+        if (is_Callframe(topFrame)){
+            pc = heap_get_Callframe_pc(topFrame);
+            E = heap_get_Callframe_environment(topFrame);
         }
     }
     else {
@@ -420,7 +433,7 @@ function test(testcase, expected){
 /* === Function called from webpage === */
 export function parseInput(){
     const testcase = test_func;
-    test(testcase, 2);
+    test(testcase, 1);
 
     /*
     // Get text input
