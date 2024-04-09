@@ -2,7 +2,7 @@
 var parse2 = require("./Parser/javascript.js")
 
 // let s = "function(x){}"
-let s = "5;"
+let s = "go func()"
 
 let y = parse2.parse(s)
 console.log(JSON.stringify(y, null, 2))

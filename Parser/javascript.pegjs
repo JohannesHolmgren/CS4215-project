@@ -168,6 +168,7 @@ Keyword
   / ConstToken
   / VoidToken
   / WithToken
+  / GoToken
 
 FutureReservedWord
   = ClassToken
@@ -437,6 +438,7 @@ TypeofToken     = "typeof"     !IdentifierPart
 VarToken        = "var"        !IdentifierPart
 VoidToken       = "void"       !IdentifierPart
 WithToken       = "with"       !IdentifierPart
+GoToken         = "go"         !IdentifierPart
 
 // Skipped
 
@@ -954,6 +956,7 @@ Statement
   / TryStatement
   / DebuggerStatement
   / Expression
+  / GoStatement
 
 Block
   = "{" __ body:(StatementList __)? "}" {
@@ -1296,6 +1299,13 @@ ProgramWrapped
       };
     }
 
+GoStatement
+  = GoToken __ declarations:CallExpression EOS {
+      return {
+        tag: "GoRoutine",
+        function: declarations,
+      };
+    }
 
 SourceElement
   = Statement
