@@ -434,12 +434,20 @@ function createNewGoRoutineFromCurrent(){
 
 function switchToRoutine(from, to){
     /* Switch from routine with index 'from' to 
-       routine with index 'to'. pc is written back to 
+       routine with index 'to'. 
+       pc and E are written back to 
        old routine. */
+
+    // Write back state for from-routine
+    environments[from] = E;
+    runtimeStacks[from] = RTS;  // Currently passed by ref so this not needed
+    operandStacks[from] = OS;  // Currently passed by ref so this not needed
+    pcs[from] = pc;
+
+    // Get state for to-routine
     E = environments[to];
     RTS = runtimeStacks[to];
     OS = operandStacks[to];
-    pcs[from] = pc;
     pc = pcs[to];
     currentRoutine = to;
     console.log(`Switches to routine ${currentRoutine}`);
@@ -458,7 +466,10 @@ function initBaseRoutine(){
     */
    nRoutines = 0;
    const baseRoutine = createNewGoRoutine();
-   switchToRoutine(baseRoutine, baseRoutine);
+   E = environments[baseRoutine];
+   RTS = runtimeStacks[baseRoutine];
+   OS = operandStacks[baseRoutine];
+   pc = pcs[baseRoutine];
    return baseRoutine;
 }
 
@@ -479,14 +490,10 @@ function isActive(routine){
 /* ============= RUN AND TESTS ============== */
 function run(){
     
-    /*RTS = [];
-    OS = [];
-    E = initializeEmptyEnvironment();
-    pc = 0;
-    */
-   currentRoutine = initBaseRoutine();
+    // Create routine that main program is run as
+    currentRoutine = initBaseRoutine();
    
-    console.log(INSTRUCTIONS);
+    // console.log(INSTRUCTIONS);
     while (!(INSTRUCTIONS[pc].tag === "DONE")) {
         // Fetch next instruction and execute
         const instruction = INSTRUCTIONS[pc++];
