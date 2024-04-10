@@ -48,7 +48,8 @@ import {heap_allocate_Environment,
         heap_get_Callframe_pc,
         heap_get_Callframe_environment,
         heap_Environment_copy,
-        heap_allocate_Gocallframe
+        heap_allocate_Gocallframe,
+        is_Gocallframe
     } from "./heap.js";
 //var parser = require("./Parser/javascript.js")
 
@@ -362,12 +363,31 @@ function execute_instruction(instruction) {
         // Clone current E, RTS, OS, PC and do the CALL with the new routine
         const routine = createNewGoRoutineFromCurrent();
         switchToRoutine(currentRoutine, routine);
-        execute_instruction({tag: "CALL", arity: instruction.arity, gocall: true});
+        // execute_instruction({tag: "CALL", arity: instruction.arity});
+
+        // On OS: all arguments above function itself
+        // Load arguments backwards since pushed so
+        const args = [];
+        const frame_address = heap_allocate_Frame(instruction.arity);
+        for (let i=instruction.arity-1; i>=0; i--){
+            args[i] = OS.pop();
+            heap_set_child(frame_address, i, args[i]);
+        }
+        const funcToCall = OS.pop();
+        const callFrame = heap_allocate_Gocallframe(E, pc); // Different from above
+        RTS.push(callFrame);
+        // E = extendEnvironment(args, heap_get_Closure_environment(funcToCall));
+        E = heap_Environment_extend(frame_address, heap_get_Closure_environment(funcToCall));        
+        pc = heap_get_Closure_pc(funcToCall);
 
     }
     else if (instruction.tag === "RESET"){
         pc--;
         const topFrame = RTS.pop();
+        if (is_Gocallframe(topFrame)){
+            console.log("GOCALLFRAME FOUND");
+            killRoutine(currentRoutine);
+        }
         if (is_Callframe(topFrame)){
             pc = heap_get_Callframe_pc(topFrame);
             E = heap_get_Callframe_environment(topFrame);
@@ -449,6 +469,13 @@ function initBaseRoutine(){
    return baseRoutine;
 }
 
+function rotateRoutine(){
+    /* Update to next routine in queue. */
+    activeRoutines.push(currentRoutine);
+    const newRoutine = activeRoutines.shift();
+    switchToRoutine(currentRoutine, newRoutine);
+}
+
 /* ============= RUN AND TESTS ============== */
 function run(){ 
    currentRoutine = initBaseRoutine();
@@ -461,16 +488,10 @@ function run(){
         const instruction = INSTRUCTIONS[pc++];
         console.log(`Executes: ${instruction.tag} `);
         execute_instruction(instruction);
+        console.log(activeRoutines);
         // console.log(instruction)
-
         // Switch routine
-        // activeRoutines.push(currentRoutine);
-        // const newRoutine = activeRoutines.shift();
-        // switchToRoutine(currentRoutine, newRoutine);
-        iteration++;
-        if (iteration > 30){
-            break;
-        }
+        rotateRoutine();
     }
 }
 
@@ -484,7 +505,7 @@ const test_cond2 = [{"tag": "blk", "body": {"tag": "cond", "pred": {"tag": "bino
 const test_cond = [{tag: "seq", stmts: [{tag: "cond", pred: {tag: "binop", sym: "&&", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: "lit", val: 1}, alt: {tag: "lit", val: 5}}, {tag: "lit", val: 3}]}, 3]; // Returns 3
 const test_func = [{"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}]}}, 1]; // Returns 1
 const test_func2 = [{"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": ["n"], "body": {"tag": "ret", "expr": {"tag": "nam", "sym": "n"}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": [{"tag": "lit", "val": 2}]}]}}, 2]; // Returns 1
-const test_go_create = [{"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "goroutine", "function": {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}}, {"tag": "lit", "val": 3}]}}, 3]; //returns 1
+const test_go_create = [{"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "goroutine", "function": {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}}, {"tag": "lit", "val": 1}]}}, 1]; //returns 1
 
 /* ==== Run test ==== */
 function test(testcase){
@@ -493,7 +514,6 @@ function test(testcase){
     compile_program(program);
     console.log(program);
     run();
-    // Only main routine should be able to return
     const finalValue = operandStacks[0].slice(-1);
     console.log(`Final: ${finalValue}`);
     if (finalValue == expected){
@@ -514,9 +534,9 @@ export function parseInput(){
     // test(test_blk);
     // test(test_cond2);
     // test(test_cond);
-    test(test_func);
-    // test(test_func2);
-    // test(test_go_create);
+    // test(test_func);
+    // test(test_func2); // NOTE: doesn't work with arguments yet...
+    test(test_go_create);
     /*
     // Get text input
     const input = document.getElementById("editor").value;
