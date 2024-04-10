@@ -47,7 +47,9 @@ import {heap_allocate_Environment,
         is_Callframe,
         heap_get_Callframe_pc,
         heap_get_Callframe_environment,
-        heap_Environment_copy
+        heap_Environment_copy,
+        heap_allocate_Gocallframe,
+        is_Gocallframe
     } from "./heap.js";
 //var parser = require("./Parser/javascript.js")
 
@@ -354,12 +356,31 @@ function execute_instruction(instruction) {
         // Clone current E, RTS, OS, PC and do call with the new ones
         const routine = createNewGoRoutineFromCurrent();
         switchToRoutine(currentRoutine, routine);
-        execute_instruction({tag: "CALL", arity: instruction.arity});
+        // execute_instruction({tag: "CALL", arity: instruction.arity});
+
+        // On OS: all arguments above function itself
+        // Load arguments backwards since pushed so
+        const args = [];
+        const frame_address = heap_allocate_Frame(instruction.arity);
+        for (let i=instruction.arity-1; i>=0; i--){
+            args[i] = OS.pop();
+            heap_set_child(frame_address, i, args[i]);
+        }
+        const funcToCall = OS.pop();
+        const callFrame = heap_allocate_Gocallframe(E, pc); // Different from above
+        RTS.push(callFrame);
+        // E = extendEnvironment(args, heap_get_Closure_environment(funcToCall));
+        E = heap_Environment_extend(frame_address, heap_get_Closure_environment(funcToCall));        
+        pc = heap_get_Closure_pc(funcToCall);
 
     }
     else if (instruction.tag === "RESET"){
         pc--;
         const topFrame = RTS.pop();
+        if (is_Gocallframe(topFrame)){
+            console.log("GOCALLFRAME FOUND");
+            killRoutine(currentRoutine);
+        }
         if (is_Callframe(topFrame)){
             pc = heap_get_Callframe_pc(topFrame);
             E = heap_get_Callframe_environment(topFrame);
@@ -382,6 +403,7 @@ const operandStacks = [];
 const pcs = [];
 let nRoutines = 0;
 let currentRoutine;
+const activeRoutines = [];
 
 function createNewGoRoutine(){
     const newEnv = initializeEmptyEnvironment();
@@ -392,7 +414,8 @@ function createNewGoRoutine(){
     runtimeStacks[nRoutines] = newRTS;
     operandStacks[nRoutines] = newOS;
     pcs[nRoutines] = newPC;
-    return nRoutines++; // returns non-increased nRoutines
+    activeRoutines.push(nRoutines);
+    return nRoutines++; // returns index of routine created
 }
 
 function createNewGoRoutineFromCurrent(){
@@ -405,7 +428,8 @@ function createNewGoRoutineFromCurrent(){
     runtimeStacks[nRoutines] = newRTS;
     operandStacks[nRoutines] = newOS;
     pcs[nRoutines] = newPC;
-    return nRoutines++;
+    activeRoutines.push(nRoutines);
+    return nRoutines++; // returns index of routine created
 }
 
 function switchToRoutine(from, to){
@@ -417,6 +441,15 @@ function switchToRoutine(from, to){
     OS = operandStacks[to];
     pcs[from] = pc;
     pc = pcs[to];
+    currentRoutine = to;
+    console.log(`Switches to routine ${currentRoutine}`);
+}
+
+function killRoutine(routine){
+    /* Kills a routine by removing it from 
+       active routines. */
+    const index = activeRoutines.indexOf(routine);
+    activeRoutines.splice(index, 1);
 }
 
 function initBaseRoutine(){
@@ -429,8 +462,12 @@ function initBaseRoutine(){
    return baseRoutine;
 }
 
-
-
+function rotateRoutine(){
+    /* Update to next routine in queue. */
+    activeRoutines.push(currentRoutine);
+    const newRoutine = activeRoutines.shift();
+    switchToRoutine(currentRoutine, newRoutine);
+}
 
 /* ============= RUN AND TESTS ============== */
 function run(){
@@ -448,8 +485,10 @@ function run(){
         const instruction = INSTRUCTIONS[pc++];
         console.log(`Executes: ${instruction.tag} `);
         execute_instruction(instruction);
+        console.log(activeRoutines);
         // console.log(instruction)
-        // TODO: Switch routine
+        // Switch routine
+        rotateRoutine();
     }
 }
 
@@ -463,7 +502,7 @@ const test_cond2 = [{"tag": "blk", "body": {"tag": "cond", "pred": {"tag": "bino
 const test_cond = [{tag: "seq", stmts: [{tag: "cond", pred: {tag: "binop", sym: "&&", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: "lit", val: 1}, alt: {tag: "lit", val: 5}}, {tag: "lit", val: 3}]}, 3]; // Returns 3
 const test_func = [{"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}]}}, 1]; // Returns 1
 const test_func2 = [{"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": ["n"], "body": {"tag": "ret", "expr": {"tag": "nam", "sym": "n"}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": [{"tag": "lit", "val": 2}]}]}}, 2]; // Returns 1
-const test_go_create = [{"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "goroutine", "function": {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}}]}}, 1]; //returns 1
+const test_go_create = [{"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "goroutine", "function": {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}}, {"tag": "lit", "val": 1}]}}, 1]; //returns 1
 
 /* ==== Run test ==== */
 function test(testcase){
@@ -472,11 +511,13 @@ function test(testcase){
     compile_program(program);
     console.log(program);
     run();
-    if (OS.slice(-1) == expected){
-        console.log(`SUCCESS! Got ${OS.slice(-1)} of type ${typeof OS.slice(-1)}. Expected ${expected} of type ${typeof expected}`)
+    const finalValue = operandStacks[0].slice(-1);
+    console.log(`Final: ${finalValue}`);
+    if (finalValue == expected){
+        console.log(`SUCCESS! Got ${finalValue} of type ${typeof OS.slice(-1)}. Expected ${expected} of type ${typeof expected}`)
     }
     else {
-        console.error(`FAILURE! Expected ${expected} got ${OS.slice(-1)}`)
+        console.error(`FAILURE! Expected ${expected} got ${finalValue}`)
     }
 }
 
@@ -491,7 +532,7 @@ export function parseInput(){
     // test(test_cond2);
     // test(test_cond);
     // test(test_func);
-    // test(test_func2);
+    // test(test_func2); // NOTE: doesn't work with arguments yet...
     test(test_go_create);
     /*
     // Get text input
