@@ -1,0 +1,39 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    background-color: #31363F;
+    color: #EEEEEE
+}
+
+#input_box {
+    margin-left: 1vw;
+    padding: 5px;
+    resize: none;
+    width: 50vw;
+    border-radius: 5px;
+    font-family: 'Courier';
+    background-color: #222831;
+}
+
+#run-button {
+    margin-left: 1vw;
+    width: 160px;
+    height: 60px;
+    border: 1px solid #EEEEEE;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: 500;
+    background-color: #76ABAE;
+
+}
+
+#output_div {
+    margin-top: 5vh;
+    margin-left: 1vw;
+    width: 48vw;
+    height: 50px;
+    border-radius: 5px;
+
+    border: 1px solid #EEEEEE;
+}
