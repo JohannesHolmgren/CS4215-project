@@ -29,18 +29,6 @@ ENVIRONMENT:
 PC:
 - Used in virtual machine
 */
-/* ============= DEPENDENCIES =============== */
-import {parse} from "./Parser/javascript.js";
-import {heap_allocate_Environment,
-        compile_time_environment_position,
-        compile_time_environment_extend,
-        heap_set_Environment_value,
-        heap_get_Environment_value,
-        heap_Environment_extend,
-        heap_allocate_Frame,
-        heap_set_child
-    } from "./heap.js";
-//var parser = require("./Parser/javascript.js")
 
 /* ================ HELPERS ================= */
 class Pair {
@@ -124,7 +112,6 @@ function compile_component(component, compile_environment) {
     else if (component.tag === "blk"){
         const locals = scan(component.body);
         INSTRUCTIONS[wc++] = {tag: "ENTER_SCOPE", num: locals.length, syms: locals};
-        console.log(compile_environment);
         compile_component(component.body, compile_time_environment_extend(locals, compile_environment));
         INSTRUCTIONS[wc++] = {tag: "EXIT_SCOPE"};
     }
@@ -164,6 +151,12 @@ function compile_component(component, compile_environment) {
         INSTRUCTIONS[wc++] = {tag: "LDC", val: undefined};
         INSTRUCTIONS[wc++] = {tag: "RESET"};
         goto_instr.addr = wc;
+    }
+    else if (component.tag === "goroutine") {
+        // Compile application call
+        compile_component(component.function, compile_environment);
+        // Change "CALL" to "GOCALL"
+        INSTRUCTIONS[wc-1] = {tag: "GOCALL", arity: INSTRUCTIONS[wc-1].arity};
     }
     // Possibly add assignment if needed by anything later
     else if (component.tag === undefined){
@@ -205,9 +198,9 @@ function compile_program(program) {
 
 /* ============= VIRTUAL MACHINE ============ */
 /* Define Data structures */
-let RTS = [];
-let OS = [];
-let E = initializeEmptyEnvironment();
+let RTS;
+let OS;
+let E;
 let pc = 0;
 
 const binop_microcode = {
@@ -234,38 +227,18 @@ const unop_microcode = {
 
 function lookup(pos, environment){
     return heap_get_Environment_value(environment, pos);
-
-    /*
-    if(environment === null){
-        throw new Error(`Symbol ${symbol} does not exist in environment`);
-    }
-    if(environment.head.hasOwnProperty(symbol)){
-        return environment.head[symbol];
-    }
-    return lookup(symbol, environment.tail);
-    */
 }
 
 function assign(pos, value, environment){
-
     heap_set_Environment_value(environment, pos, value);
-
-    /*
-    if(environment === null){
-        throw new Error(`Symbol ${symbol} does not exist in environment`);
-    }
-
-    if(environment.head.hasOwnProperty(symbol)){
-        environment.head[symbol] = value;
-    }
-    else {
-        assign(symbol, value, environment.tail);
-    }
-    */
 }
 
-function extendEnvironment(names, values, env){
-    const newFrame = heap_allocate_Frame(1);
+function extendEnvironment(values, env){
+    const arity = values.length;
+    const newFrame = heap_allocate_Frame(arity);
+    for (let i = 0; i < arity; i++){
+        heap_set_child(newFrame, i, values[i]);
+    }
     return heap_Environment_extend(newFrame, env);
 
     /*
@@ -303,7 +276,6 @@ function execute_instruction(instruction) {
     else if (instruction.tag === "ASSIGN"){
         // Assign last element on OS to symbol in env E
         assign(instruction.pos, OS.slice(-1)[0], E);
-        console.log(heap_get_Environment_value(E, instruction.pos));
     }
     else if (instruction.tag === "JOF"){
         if(!OS.pop()){
@@ -316,12 +288,10 @@ function execute_instruction(instruction) {
     else if (instruction.tag === "ENTER_SCOPE"){
         // Extend environment with new frame that includes all locals 
         // assigned to unassigned
-        RTS.push({tag: "BLOCK_FRAME", env: E});
-        const locals = instruction.syms;
-
-        const new_frame = heap_allocate_Frame(locals.length);
+        RTS.push(heap_allocate_Blockframe(E));
+        const new_frame = heap_allocate_Frame(instruction.num);
         E = heap_Environment_extend(new_frame, E);
-        for (let i=0; i < locals.length; i++){
+        for (let i=0; i < instruction.num; i++){
             heap_set_child(new_frame, i, undefined);
         }
 
@@ -338,29 +308,63 @@ function execute_instruction(instruction) {
         E = RTS.pop().env;
     }
     else if (instruction.tag === "LDF"){
-        var closureTag = {tag: "CLOSURE", prms: instruction.prms, addr: instruction.addr, env: E};
-        OS.push(closureTag);
+        const arity = instruction.arity;
+        const address = instruction.addr;
+        const closure_address = heap_allocate_Closure(arity, address, E)
+        OS.push(closure_address);
     }
     else if (instruction.tag === "CALL"){
         // On OS: all arguments above function itself
         // Load arguments backwards since pushed so
         const args = [];
+        const frame_address = heap_allocate_Frame(instruction.arity);
         for (let i=instruction.arity-1; i>=0; i--){
             args[i] = OS.pop();
+            heap_set_child(frame_address, i, args[i]);
         }
         const funcToCall = OS.pop();
-        RTS.push({tag: "CALL_FRAME", addr: pc+1, env: E});
-        E = extendEnvironment(funcToCall.prms, args, E);
-        pc = funcToCall.addr;
+        const callFrame = heap_allocate_Callframe(E, pc);
+        RTS.push(callFrame);
+        // E = extendEnvironment(args, heap_get_Closure_environment(funcToCall));
+        E = heap_Environment_extend(frame_address, heap_get_Closure_environment(funcToCall));        
+        pc = heap_get_Closure_pc(funcToCall);
+    }
+    else if (instruction.tag === "GOCALL"){
+        // Clone current E, RTS, OS, PC and do call with the new ones
+        const routine = createNewGoRoutineFromCurrent();
+        switchToRoutine(currentRoutine, routine);
+        // execute_instruction({tag: "CALL", arity: instruction.arity});
+
+        // On OS: all arguments above function itself
+        // Load arguments backwards since pushed so
+        const args = [];
+        const frame_address = heap_allocate_Frame(instruction.arity);
+        for (let i=instruction.arity-1; i>=0; i--){
+            args[i] = OS.pop();
+            heap_set_child(frame_address, i, args[i]);
+        }
+        const funcToCall = OS.pop();
+        const callFrame = heap_allocate_Gocallframe(E, pc); // Different from above
+        RTS.push(callFrame);
+        // E = extendEnvironment(args, heap_get_Closure_environment(funcToCall));
+        E = heap_Environment_extend(frame_address, heap_get_Closure_environment(funcToCall));        
+        pc = heap_get_Closure_pc(funcToCall);
+
     }
     else if (instruction.tag === "RESET"){
+        pc--;
         const topFrame = RTS.pop();
-        if (topFrame.tag === "CALL_FRAME"){
-            pc = topFrame.addr;
-            E = topFrame.env;
+        if (is_Gocallframe(topFrame)){
+            console.log("GOCALLFRAME FOUND");
+            killRoutine(currentRoutine);
+        }
+        if (is_Callframe(topFrame)){
+            pc = heap_get_Callframe_pc(topFrame);
+            E = heap_get_Callframe_environment(topFrame);
         }
     }
     else {
+        console.log(instruction);
         throw new Error(`Undefined instruction: ${instruction.tag}`);
     }
 }
@@ -369,67 +373,144 @@ function initializeEmptyEnvironment(){
     return heap_allocate_Environment(0);
 }
 
-function run() {
-    RTS = [];
+/* =============== GOROUTINES =============== */
+const environments = [];
+const runtimeStacks = [];
+const operandStacks = [];
+const pcs = [];
+let nRoutines = 0;
+let currentRoutine;
+const activeRoutines = [];
+
+function createNewGoRoutine(){
+    const newEnv = initializeEmptyEnvironment();
+    const newRTS = [];
+    const newOS = [];
+    const newPC = 0;
+    environments[nRoutines] = newEnv;
+    runtimeStacks[nRoutines] = newRTS;
+    operandStacks[nRoutines] = newOS;
+    pcs[nRoutines] = newPC;
+    activeRoutines.push(nRoutines);
+    return nRoutines++; // returns index of routine created
+}
+
+function createNewGoRoutineFromCurrent(){
+    // HOW TO COPY ENVIRONMENT??
+    const newEnv = heap_Environment_copy(E);
+    const newRTS = [...RTS];
+    const newOS = [...OS];
+    const newPC = pc;
+    environments[nRoutines] = newEnv;
+    runtimeStacks[nRoutines] = newRTS;
+    operandStacks[nRoutines] = newOS;
+    pcs[nRoutines] = newPC;
+    activeRoutines.push(nRoutines);
+    return nRoutines++; // returns index of routine created
+}
+
+function switchToRoutine(from, to){
+    /* Switch from routine with index 'from' to 
+       routine with index 'to'. pc is written back to 
+       old routine. */
+    E = environments[to];
+    RTS = runtimeStacks[to];
+    OS = operandStacks[to];
+    pcs[from] = pc;
+    pc = pcs[to];
+    currentRoutine = to;
+    console.log(`Switches to routine ${currentRoutine}`);
+}
+
+function killRoutine(routine){
+    /* Kills a routine by removing it from 
+       active routines. */
+    const index = activeRoutines.indexOf(routine);
+    activeRoutines.splice(index, 1);
+}
+
+function initBaseRoutine(){
+    /* Create program's base routine,
+       i.e. the one running from the beginning.
+    */
+   nRoutines = 0;
+   const baseRoutine = createNewGoRoutine();
+   switchToRoutine(baseRoutine, baseRoutine);
+   return baseRoutine;
+}
+
+function rotateRoutine(){
+    /* Update to next routine in queue. */
+    // if (isActive(currentRoutine)) {
+    //    activeRoutines.push(currentRoutine);
+    // }
+    const newRoutine = activeRoutines.shift();
+    activeRoutines.push(newRoutine);
+    switchToRoutine(currentRoutine, newRoutine);
+}
+
+function isActive(routine){
+    return activeRoutines.includes(routine);
+}
+
+/* ============= RUN AND TESTS ============== */
+function run(){
+    
+    /*RTS = [];
     OS = [];
     E = initializeEmptyEnvironment();
     pc = 0;
-
+    */
+   currentRoutine = initBaseRoutine();
+   
     console.log(INSTRUCTIONS);
     while (!(INSTRUCTIONS[pc].tag === "DONE")) {
         // Fetch next instruction and execute
         const instruction = INSTRUCTIONS[pc++];
         console.log(`Executes: ${instruction.tag} `);
         execute_instruction(instruction);
+        console.log(activeRoutines);
         // console.log(instruction)
-        // TODO: Switch routine
+        // Switch routine
+        rotateRoutine();
     }
-}
-
-/* ============= RUN AND TESTS ============== */
-function compile_and_display(testcase) {
-    compile_component(testcase);
-    console.log(INSTRUCTIONS)
 }
 
 /* === Test Cases === */
-const test_binop = {"tag": "binop", "sym": "+", "frst": {"tag": "lit", "val": 1}, "scnd": {"tag": "lit", "val": 1}};  // 1 + 1 Returns 2
-const test_unop = {tag: "unop", sym: "!", frst: {tag: "lit", val: true}};  // !true Returns false
-const test_seq = {"tag": "seq", "stmts": [{"tag": "lit", "val": 1}, {"tag": "lit", "val": 2}]};    // 1; 2; Returns 2
-const test_ld = {tag: "blk", body: {tag: "seq", stmts: [{tag: "const", sym: "y", expr: {tag: "lit", val: 16}}, {tag: "nam", sym: "y"}]}}; // Returns 16
-const test_blk = {"tag": "blk", "body": {tag: "seq", stmts: [{tag: "const", sym: "y", expr: {tag: "lit", val: 1}}]}};   // Returns 1
-const test_cond2 = {"tag": "blk", "body": {"tag": "cond", "pred": {"tag": "binop", "sym": "||", "frst": {"tag": "lit", "val": true}, "scnd": {"tag": "lit", "val": false}}, "cons": {"tag": "lit", "val": 1}, "alt": {"tag": "lit", "val": 2}}} // Retuns 1
-const test_cond = {tag: "seq", stmts: [{tag: "cond", pred: {tag: "binop", sym: "&&", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: "lit", val: 1}, alt: {tag: "lit", val: 5}}, {tag: "lit", val: 3}]}; // Returns 3
-const test_func = {"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}]}}; // Returns 1
-
+const test_binop = [{"tag": "binop", "sym": "+", "frst": {"tag": "lit", "val": 1}, "scnd": {"tag": "lit", "val": 1}}, 2];  // 1 + 1 Returns 2
+const test_unop = [{tag: "unop", sym: "!", frst: {tag: "lit", val: true}}, false];  // !true Returns false
+const test_seq = [{"tag": "seq", "stmts": [{"tag": "lit", "val": 1}, {"tag": "lit", "val": 2}]}, 2];    // 1; 2; Returns 2
+const test_ld = [{tag: "blk", body: {tag: "seq", stmts: [{tag: "const", sym: "y", expr: {tag: "lit", val: 16}}, {tag: "nam", sym: "y"}]}}, 16]; // Returns 16
+const test_blk = [{"tag": "blk", "body": {tag: "seq", stmts: [{tag: "const", sym: "y", expr: {tag: "lit", val: 1}}]}}, 1];   // Returns 1
+const test_cond2 = [{"tag": "blk", "body": {"tag": "cond", "pred": {"tag": "binop", "sym": "||", "frst": {"tag": "lit", "val": true}, "scnd": {"tag": "lit", "val": false}}, "cons": {"tag": "lit", "val": 1}, "alt": {"tag": "lit", "val": 2}}}, 1]; // Retuns 1
+const test_cond = [{tag: "seq", stmts: [{tag: "cond", pred: {tag: "binop", sym: "&&", frst: {tag: "lit", val: true}, scnd: {tag: "lit", val: false}}, cons: {tag: "lit", val: 1}, alt: {tag: "lit", val: 5}}, {tag: "lit", val: 3}]}, 3]; // Returns 3
+const test_func = [{"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}]}}, 1]; // Returns 1
+const test_func2 = [{"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": ["n"], "body": {"tag": "ret", "expr": {"tag": "nam", "sym": "n"}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": [{"tag": "lit", "val": 2}]}]}}, 2]; // Returns 1
+const test_go_create = [{"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "f", "prms": [], "body": {"tag": "ret", "expr": {"tag": "lit", "val": 1}}}, {"tag": "goroutine", "function": {"tag": "app", "fun": {"tag": "nam", "sym": "f"}, "args": []}}, {"tag": "lit", "val": 1}]}}, 1]; //returns 1
 
 /* ==== Run test ==== */
-function test(testcase, expected){
-    compile_program(testcase);
+function test(testcase){
+    const program = testcase[0];
+    const expected = testcase[1];
+    compile_program(program);
+    console.log(program);
     run();
-    console.log(OS);
-    if (OS.slice(-1) == expected){
-        console.log(`SUCCESS! Got ${OS.slice(-1)} of type ${typeof OS.slice(-1)}. Expected ${expected} of type ${typeof expected}`)
+    const finalValue = operandStacks[0].slice(-1);
+    console.log(`Final: ${finalValue}`);
+    if (finalValue == expected){
+        console.log(`SUCCESS! Got ${finalValue} of type ${typeof OS.slice(-1)}. Expected ${expected} of type ${typeof expected}`)
     }
     else {
-        console.error(`FAILURE! Expected ${expected} got ${OS.slice(-1)}`)
+        console.error(`FAILURE! Expected ${expected} got ${finalValue}`)
     }
 }
 
+function setV() {
+  let code = document.getElementById("input_box").value;
+  let parsed_code = parse(code);
+  console.log(parsed_code)
+  compile_program(parsed_code);
+  run();
+  document.getElementById("output_div").innerHTML = OS.slice(-1)
 
-/* === Function called from webpage === */
-export function parseInput(){
-    const testcase = test_func;
-    test(testcase, 2);
-
-    /*
-    // Get text input
-    const input = document.getElementById("editor").value;
-    console.log(input);
-    // Parse input
-    let parsedInput = parse(input);
-    console.log(parsedInput);
-    */
 }
-
-/* ============= PLAYGROUND ============== */
