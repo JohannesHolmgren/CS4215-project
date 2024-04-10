@@ -162,6 +162,9 @@ function compile_component(component, compile_environment) {
     else if (component.tag === undefined){
         // Do nothing
     }
+    else if (component.tag === "EmptyStatement"){
+        throw new TypeError(`You have probably used a semicolon, which is not supported in this goslang`);
+    }
     else {
         throw new TypeError(`Undefined tag: ${component.tag}`);
     }
@@ -474,9 +477,9 @@ function run(){
     while (!(INSTRUCTIONS[pc].tag === "DONE")) {
         // Fetch next instruction and execute
         const instruction = INSTRUCTIONS[pc++];
-        console.log(`Executes: ${instruction.tag} `);
+        // console.log(`Executes: ${instruction.tag} `);
         execute_instruction(instruction);
-        console.log(activeRoutines);
+        // console.log(activeRoutines);
         // console.log(instruction)
         // Switch routine
         rotateRoutine();
