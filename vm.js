@@ -130,7 +130,7 @@ function compile_component(component, compile_environment) {
         for (let arg of component.args){
             compile_component(arg, compile_environment);
         }
-        INSTRUCTIONS[wc++] = {tag: "CALL", arity: component.args.length, gocall: false};
+        INSTRUCTIONS[wc++] = {tag: "CALL", arity: component.args.length};
     }
     else if (component.tag === "blk"){
         const locals = scan(component.body);
@@ -178,7 +178,7 @@ function compile_component(component, compile_environment) {
     else if (component.tag === "goroutine") {
         // Compile application call
         compile_component(component.function, compile_environment);
-        // Change "CALL" to "GOCALL" TODO CHANGE!!!!!!
+        // Change "CALL" to "GOCALL"
         INSTRUCTIONS[wc-1] = {tag: "GOCALL", arity: INSTRUCTIONS[wc-1].arity};
     }
     // Possibly add assignment if needed by anything later
@@ -346,21 +346,14 @@ function execute_instruction(instruction) {
             heap_set_child(frame_address, i, args[i]);
         }
         const funcToCall = OS.pop();
-        // Create callframe depending on type of call
-        let callFrame;
-        if (instruction.gocall) {
-            callFrame = heap_allocate_Gocallframe(E, pc);
-        } else {
-            callFrame = heap_allocate_Callframe(E, pc);
-        }
-        callFrame = heap_allocate_Callframe(E, pc);
-        console.log(callFrame);
+        const callFrame = heap_allocate_Callframe(E, pc);
+        RTS.push(callFrame);
         // E = extendEnvironment(args, heap_get_Closure_environment(funcToCall));
         E = heap_Environment_extend(frame_address, heap_get_Closure_environment(funcToCall));        
         pc = heap_get_Closure_pc(funcToCall);
     }
     else if (instruction.tag === "GOCALL"){
-        // Clone current E, RTS, OS, PC and do the CALL with the new routine
+        // Clone current E, RTS, OS, PC and do call with the new ones
         const routine = createNewGoRoutineFromCurrent();
         switchToRoutine(currentRoutine, routine);
         // execute_instruction({tag: "CALL", arity: instruction.arity});
@@ -484,11 +477,15 @@ function isActive(routine){
 }
 
 /* ============= RUN AND TESTS ============== */
-function run(){ 
+function run(){
+    
+    /*RTS = [];
+    OS = [];
+    E = initializeEmptyEnvironment();
+    pc = 0;
+    */
    currentRoutine = initBaseRoutine();
    
-    let iteration = 0;
-
     console.log(INSTRUCTIONS);
     while (!(INSTRUCTIONS[pc].tag === "DONE")) {
         // Fetch next instruction and execute
@@ -541,9 +538,9 @@ export function parseInput(){
     // test(test_blk);
     // test(test_cond2);
     // test(test_cond);
-    // test(test_func);
+    test(test_func);
     // test(test_func2); // NOTE: doesn't work with arguments yet...
-    test(test_go_create);
+    // test(test_go_create);
 
     /*
     // Get text input
