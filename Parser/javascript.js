@@ -827,7 +827,7 @@ function peg$parse(input, options) {
   var peg$f91 = function(declarations) {
       return {
         tag: "const",
-        sym: declarations[0]['sym'],
+        sym: declarations[0]['id']['sym'],
         expr: declarations[0]['init']
       };
     };

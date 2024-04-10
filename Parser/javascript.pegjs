@@ -991,7 +991,7 @@ ConstStatement
   = ConstToken __ declarations:VariableDeclarationList EOS {
       return {
         tag: "const",
-        sym: declarations[0]['sym'],
+        sym: declarations[0]['id']['sym'],
         expr: declarations[0]['init']
       };
     }
