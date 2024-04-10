@@ -6,15 +6,17 @@
     <title>Virtual Machine for Go</title>
 </head>
 <body>
+    <textarea type="text" id="input_box"></textarea>
     <div id="code-editor">
-        <button id="run-button" style="width: 90vw; height: 50vh;">Run</button>
-        <!-- <textarea name="editor" id="editor" cols="100" rows="40"></textarea> -->
+        <button id="run-button">Run</button>
     </div>
-    <script type="module">
-        import {parseInput} from "./vm.js";
-        document.getElementById("run-button").addEventListener("click", function(){
-            parseInput();
-        });
+    <div id="output_div"></div>
+
+    <script src="Parser/javascript.js"></script>
+    <script src="heap.js"></script>
+    <script src="vm.js"></script>
+    <script>
+      document.getElementById("run-button").addEventListener("click", () => setV());
     </script>
 </body>
 </html>

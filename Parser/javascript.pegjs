@@ -99,7 +99,7 @@ IdentifierName "identifier"
   = head:IdentifierStart tail:IdentifierPart* {
       return {
         tag: "nam",
-        sym: head
+        sym: head + tail.join("") //THIS MIGHT CAUSE MAJOR ISSUES!
       };
     }
 
@@ -168,6 +168,9 @@ Keyword
   / ConstToken
   / VoidToken
   / WithToken
+  / GoToken
+  / MakeToken
+  / ArrowToken
 
 FutureReservedWord
   = ClassToken
@@ -183,6 +186,8 @@ Literal
   / NumericLiteral
   / StringLiteral
   / RegularExpressionLiteral
+  / MakeStatement
+  
 
 NullLiteral
   = NullToken { return { tag: "lit", val: null }; }
@@ -437,6 +442,9 @@ TypeofToken     = "typeof"     !IdentifierPart
 VarToken        = "var"        !IdentifierPart
 VoidToken       = "void"       !IdentifierPart
 WithToken       = "with"       !IdentifierPart
+GoToken         = "go"         !IdentifierPart
+MakeToken       = "make"       !IdentifierPart
+ArrowToken      = "<-"         !IdentifierPart
 
 // Skipped
 
@@ -601,7 +609,7 @@ NewExpression
 CallExpression
   = head:(
       callee:MemberExpression __ args:Arguments {
-        return { tag: "CallExpression", callee: callee, arguments: args };
+        return { tag: "app", fun: callee, arguments: args };
       }
     )
     tail:(
@@ -857,13 +865,14 @@ ConditionalExpressionNoIn
     }
   / LogicalORExpressionNoIn
 
+
 AssignmentExpression
   = left:LeftHandSideExpression __
     "=" !"=" __
     right:AssignmentExpression
     {
       return {
-        tag: "AssignmentExpression",
+        tag: "assmt",
         sym: "=",
         left: left,
         right: right
@@ -953,7 +962,9 @@ Statement
   / ThrowStatement
   / TryStatement
   / DebuggerStatement
+  / ArrowStatement
   / Expression
+  / GoStatement
 
 Block
   = "{" __ body:(StatementList __)? "}" {
@@ -962,6 +973,7 @@ Block
         body: optionalList(extractOptional(body, 0))
       };
     }
+
 
 StatementList
   = head:Statement tail:(__ Statement)* { return buildList(head, tail, 1); }
@@ -979,7 +991,7 @@ ConstStatement
   = ConstToken __ declarations:VariableDeclarationList EOS {
       return {
         tag: "const",
-        sym: declarations[0]['sym'],
+        sym: declarations[0]['id']['sym'],
         expr: declarations[0]['init']
       };
     }
@@ -1296,6 +1308,31 @@ ProgramWrapped
       };
     }
 
+GoStatement
+  = GoToken __ declarations:CallExpression EOS {
+      return {
+        tag: "GoRoutine",
+        function: declarations,
+      };
+    }
+
+MakeStatement
+  = MakeToken __ "(" __ "chan" __  ")" __ EOS {
+      return {
+        tag: "MakeChannel",
+      };
+    }
+
+ArrowStatement
+ =  left:LeftHandSideExpression __ ArrowToken __
+    right:AssignmentExpression
+    {
+      return {
+        tag: "Arrow",
+        left: left,
+        right: right
+      };
+    }
 
 SourceElement
   = Statement
