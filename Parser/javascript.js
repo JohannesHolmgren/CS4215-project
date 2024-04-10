@@ -28,9 +28,14 @@
     return list.map(function(element) { return element[index]; });
   }
 
+  function extractSym(list){
+    return list.map(function(element){ return element["sym"]})
+  }
+
   function buildList(head, tail, index) {
     return [head].concat(extractList(tail, index));
   }
+
 
   function buildBinaryExpression(head, tail) {
     return tail.reduce(function(result, element) {
@@ -867,7 +872,7 @@ function peg$parse(input, options) {
         tag: "cond",
         pred: test,
         cons: consequent,
-        alt: null
+        alt: {"tag":"seq","stmts":[]}
       };
     };
   var peg$f101 = function(init, test, update, body) {
@@ -10916,4 +10921,8 @@ function peg$parse(input, options) {
   }
 }
 
-const parse = peg$parse;
+module.exports = {
+  StartRules: ["Start"],
+  SyntaxError: peg$SyntaxError,
+  parse: peg$parse
+};

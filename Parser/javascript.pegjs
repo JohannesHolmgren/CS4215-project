@@ -21,9 +21,14 @@
     return list.map(function(element) { return element[index]; });
   }
 
+  function extractSym(list){
+    return list.map(function(element){ return element["sym"]})
+  }
+
   function buildList(head, tail, index) {
     return [head].concat(extractList(tail, index));
   }
+
 
   function buildBinaryExpression(head, tail) {
     return tail.reduce(function(result, element) {
@@ -1052,7 +1057,7 @@ IfStatement
         tag: "cond",
         pred: test,
         cons: consequent,
-        alt: null
+        alt: {"tag":"seq","stmts":[]}
       };
     }
 
@@ -1311,7 +1316,7 @@ ProgramWrapped
 GoStatement
   = GoToken __ declarations:CallExpression EOS {
       return {
-        tag: "GoRoutine",
+        tag: "goroutine",
         function: declarations,
       };
     }
