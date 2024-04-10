@@ -275,13 +275,26 @@ const is_Blockframe = (address) => heap_get_tag(address) === Blockframe_tag;
 // [1 byte tag, 1 byte unused, 2 bytes pc,
 //  1 byte unused, 2 bytes #children, 1 byte unused]
 // followed by the address of env
+// Added: set first unused byte (at offset 1) to 0
+// to always distinguish from gocallframe
 
 const heap_allocate_Callframe = (env, pc) => {
 	const address = heap_allocate(Callframe_tag, 2);
 	heap_set_2_bytes_at_offset(address, 2, pc);
+	// heap_set_byte_at_offset(address, 1, 0);	// Added
 	heap_set(address + 1, env);
 	return address;
 };
+
+// Same principle as above but use second byte in first word
+// and set it to 1 to show it is a gocallframe
+const heap_allocate_Gocallframe = (env, pc) => {
+	const address = heap_allocate(Callframe_tag, 2);
+	heap_set_2_bytes_at_offset(address, 2, pc);
+	heap_set_byte_at_offset(address, 1, 1);
+	heap_set(address + 1, env);
+	return address;
+}
 
 const heap_get_Callframe_environment = (address) => heap_get_child(address, 0);
 
@@ -583,5 +596,6 @@ export {heap_allocate_Environment,
 		is_Callframe,
 		heap_get_Callframe_pc,
 		heap_get_Callframe_environment,
-		heap_Environment_copy
+		heap_Environment_copy,
+		heap_allocate_Gocallframe
 };
