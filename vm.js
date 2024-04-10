@@ -464,9 +464,16 @@ function initBaseRoutine(){
 
 function rotateRoutine(){
     /* Update to next routine in queue. */
-    activeRoutines.push(currentRoutine);
+    // if (isActive(currentRoutine)) {
+    //    activeRoutines.push(currentRoutine);
+    // }
     const newRoutine = activeRoutines.shift();
+    activeRoutines.push(newRoutine);
     switchToRoutine(currentRoutine, newRoutine);
+}
+
+function isActive(routine){
+    return activeRoutines.includes(routine);
 }
 
 /* ============= RUN AND TESTS ============== */
@@ -534,6 +541,7 @@ export function parseInput(){
     // test(test_func);
     // test(test_func2); // NOTE: doesn't work with arguments yet...
     test(test_go_create);
+
     /*
     // Get text input
     const input = document.getElementById("editor").value;
