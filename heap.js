@@ -275,10 +275,23 @@ const is_Blockframe = (address) => heap_get_tag(address) === Blockframe_tag;
 // [1 byte tag, 1 byte unused, 2 bytes pc,
 //  1 byte unused, 2 bytes #children, 1 byte unused]
 // followed by the address of env
+// Added: set first unused byte (at offset 1) to 0
+// to always distinguish from gocallframe
 
 const heap_allocate_Callframe = (env, pc) => {
 	const address = heap_allocate(Callframe_tag, 2);
 	heap_set_2_bytes_at_offset(address, 2, pc);
+	heap_set_byte_at_offset(address, 1, 0); // Added to make sure it is set to not gocall
+	heap_set(address + 1, env);
+	return address;
+};
+
+// Same as above but set first unused byte (at offset 1)
+// to 1 to show it's a gocall frame. 0 means normal frame
+const heap_allocate_Gocallframe = (env, pc) => {
+	const address = heap_allocate(Callframe_tag, 2);
+	heap_set_2_bytes_at_offset(address, 2, pc);
+	heap_set_byte_at_offset(address, 1, 1); // Set unused byte to 1 to show gocall
 	heap_set(address + 1, env);
 	return address;
 };
@@ -289,6 +302,8 @@ const heap_get_Callframe_pc = (address) =>
 	heap_get_2_bytes_at_offset(address, 2);
 
 const is_Callframe = (address) => heap_get_tag(address) === Callframe_tag;
+
+const is_Gocallframe = (address) => heap_get_tag(address) === Callframe_tag && heap_get_byte_at_offset(address, 1, 1) === 1;
 
 // environment frame
 // [1 byte tag, 4 bytes unused,
