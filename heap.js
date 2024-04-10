@@ -581,24 +581,3 @@ let new_env = compile_time_environment_extend(prms, global_compile_environment);
 const empty_frame_address = heap_allocate_Frame(1);
 const heap_empty_Environment = heap_allocate_Environment(0);
 const environment = heap_Environment_extend(empty_frame_address, heap_empty_Environment); */
-
-export {heap_allocate_Environment,
-		compile_time_environment_position,
-		compile_time_environment_extend,
-		heap_set_Environment_value,
-		heap_get_Environment_value,
-		heap_Environment_extend,
-		heap_allocate_Frame,
-		heap_set_child,
-		heap_allocate_Closure,
-		heap_allocate_Callframe,
-		heap_get_Closure_environment,
-		heap_get_Closure_pc,
-		heap_allocate_Blockframe,
-		is_Callframe,
-		heap_get_Callframe_pc,
-		heap_get_Callframe_environment,
-		heap_Environment_copy,
-		heap_allocate_Gocallframe,
-		is_Gocallframe
-};

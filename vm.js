@@ -29,29 +29,6 @@ ENVIRONMENT:
 PC:
 - Used in virtual machine
 */
-/* ============= DEPENDENCIES =============== */
-import {parse} from "./Parser/javascript.js";
-import {heap_allocate_Environment,
-        compile_time_environment_position,
-        compile_time_environment_extend,
-        heap_set_Environment_value,
-        heap_get_Environment_value,
-        heap_Environment_extend,
-        heap_allocate_Frame,
-        heap_set_child,
-        heap_allocate_Closure,
-        heap_allocate_Callframe,
-        heap_get_Closure_environment,
-        heap_get_Closure_pc,
-        heap_allocate_Blockframe,
-        is_Callframe,
-        heap_get_Callframe_pc,
-        heap_get_Callframe_environment,
-        heap_Environment_copy,
-        heap_allocate_Gocallframe,
-        is_Gocallframe
-    } from "./heap.js";
-//var parser = require("./Parser/javascript.js")
 
 /* ================ HELPERS ================= */
 class Pair {
@@ -528,28 +505,12 @@ function test(testcase){
     }
 }
 
+function setV() {
+  let code = document.getElementById("input_box").value;
+  let parsed_code = parse(code);
+  console.log(parsed_code)
+  compile_program(parsed_code);
+  run();
+  document.getElementById("output_div").innerHTML = OS.slice(-1)
 
-/* === Function called from webpage === */
-export function parseInput(){
-    // test(test_binop);
-    // test(test_unop);
-    // test(test_seq);
-    // test(test_ld);
-    // test(test_blk);
-    // test(test_cond2);
-    // test(test_cond);
-    test(test_func);
-    // test(test_func2); // NOTE: doesn't work with arguments yet...
-    // test(test_go_create);
-
-    /*
-    // Get text input
-    const input = document.getElementById("editor").value;
-    console.log(input);
-    // Parse input
-    let parsedInput = parse(input);
-    console.log(parsedInput);
-    */
 }
-
-/* ============= PLAYGROUND ============== */
