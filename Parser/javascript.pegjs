@@ -422,7 +422,7 @@ ExtendsToken    = "extends"    !IdentifierPart
 FalseToken      = "false"      !IdentifierPart
 FinallyToken    = "finally"    !IdentifierPart
 ForToken        = "for"        !IdentifierPart
-FunctionToken   = "function"   !IdentifierPart
+FunctionToken   = "func"   !IdentifierPart
 GetToken        = "get"        !IdentifierPart
 IfToken         = "if"         !IdentifierPart
 ImportToken     = "import"     !IdentifierPart
@@ -1254,7 +1254,7 @@ FunctionDeclaration
     "{" __ body:FunctionBody __ "}"
     {
       return {
-        tag: "FunctionDeclaration",
+        tag: "fun",
         id: id,
         params: optionalList(extractOptional(params, 0)),
         body: body
@@ -1267,10 +1267,10 @@ FunctionExpression
     "{" __ body:FunctionBody __ "}"
     {
       return {
-        tag: "FunctionExpression",
-        id: extractOptional(id, 0),
-        params: optionalList(extractOptional(params, 0)),
-        body: body
+        tag: "fun",
+        sym: extractOptional(id, 0)['sym'],
+        prms: optionalList(extractOptional(params, 0)),
+        body: {tag: "seq", stmts: body['body']}
       };
     }
 

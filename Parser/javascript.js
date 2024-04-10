@@ -270,7 +270,7 @@ function peg$parse(input, options) {
   var peg$c37 = "false";
   var peg$c38 = "finally";
   var peg$c39 = "for";
-  var peg$c40 = "function";
+  var peg$c40 = "func";
   var peg$c41 = "get";
   var peg$c42 = "if";
   var peg$c43 = "import";
@@ -451,7 +451,7 @@ function peg$parse(input, options) {
   var peg$e74 = peg$literalExpectation("false", false);
   var peg$e75 = peg$literalExpectation("finally", false);
   var peg$e76 = peg$literalExpectation("for", false);
-  var peg$e77 = peg$literalExpectation("function", false);
+  var peg$e77 = peg$literalExpectation("func", false);
   var peg$e78 = peg$literalExpectation("get", false);
   var peg$e79 = peg$literalExpectation("if", false);
   var peg$e80 = peg$literalExpectation("import", false);
@@ -1002,7 +1002,7 @@ function peg$parse(input, options) {
   var peg$f125 = function() { return { tag: "DebuggerStatement" }; };
   var peg$f126 = function(id, params, body) {
       return {
-        tag: "FunctionDeclaration",
+        tag: "fun",
         id: id,
         params: optionalList(extractOptional(params, 0)),
         body: body
@@ -1010,10 +1010,10 @@ function peg$parse(input, options) {
     };
   var peg$f127 = function(id, params, body) {
       return {
-        tag: "FunctionExpression",
-        id: extractOptional(id, 0),
-        params: optionalList(extractOptional(params, 0)),
-        body: body
+        tag: "fun",
+        sym: extractOptional(id, 0)['sym'],
+        prms: optionalList(extractOptional(params, 0)),
+        body: {tag: "seq", stmts: body['body']}
       };
     };
   var peg$f128 = function(head, tail) {
@@ -3947,9 +3947,9 @@ function peg$parse(input, options) {
     var s0, s1, s2, s3;
 
     s0 = peg$currPos;
-    if (input.substr(peg$currPos, 8) === peg$c40) {
+    if (input.substr(peg$currPos, 4) === peg$c40) {
       s1 = peg$c40;
-      peg$currPos += 8;
+      peg$currPos += 4;
     } else {
       s1 = peg$FAILED;
       if (peg$silentFails === 0) { peg$fail(peg$e77); }
