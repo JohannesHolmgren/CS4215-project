@@ -62,6 +62,9 @@ function compile_component(component, compile_environment) {
     if (component.tag === "lit"){
         INSTRUCTIONS[wc++] = {tag: "LDC", val: component.val}
     }
+    else if (component.tag === "MakeChannel"){
+        INSTRUCTIONS[wc++] = {tag: "CREATE_CHAN"}
+    }
     else if (component.tag === "binop"){
         compile_component(component.frst, compile_environment);
         compile_component(component.scnd, compile_environment);
@@ -375,6 +378,10 @@ function execute_instruction(instruction) {
             pc = heap_get_Callframe_pc(topFrame);
             E = heap_get_Callframe_environment(topFrame);
         }
+    }
+    else if (instruction.tag === "CREATE_CHAN"){
+        const channel_address = heap_allocate_Channel();
+        OS.push(channel_address);
     }
     else {
         console.log(instruction);

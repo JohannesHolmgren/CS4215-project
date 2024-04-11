@@ -149,6 +149,7 @@ const Environment_tag = 10;
 const Pair_tag = 11;
 const Builtin_tag = 12;
 const String_tag = 13; // ADDED CHANGE
+const Channel_tag = 14;
 
 // Record<string, tuple(number, string)> where the key is the hash of the string
 // and the value is a tuple of the address of the string and the string itself
@@ -427,6 +428,49 @@ const heap_allocate_Number = (n) => {
 };
 
 const is_Number = (address) => heap_get_tag(address) === Number_tag;
+
+
+// channel
+// [1 byte tag, 1 byte ready to read, 1 byte ready to write,
+// 2 bytes #children, 1 byte unused]
+// followed by the value sent on the channel
+// note: children is 0
+const heap_allocate_Channel = () => {
+	const channel_address = heap_allocate(Channel_tag, 2);
+	// Set ready to read and written to 0 (false)
+	heap_set_byte_at_offset(channel_address, 1, 0)
+	heap_set_byte_at_offset(channel_address, 2, 0)
+	return channel_address;
+};
+
+const write_to_channel = (channel_address, value) => {
+	// Set written to and write value
+	heap_set_byte_at_offset(channel_address, 2, 1)
+	heap_set(channel_address + 1, value)
+}
+
+const set_channel_read = (channel_address) => {
+	// Set channel to ready to read
+	heap_set_byte_at_offset(channel_address, 1, 1)
+}
+
+const read_channel = (channel_address) => {
+	// Set ready to read from and read value
+	return heap_get(channel_address + 1)
+
+}
+
+const is_channel_read = (channel_address) => {
+	// Check if channel is ready to read from
+	const status = heap_get_byte_at_offset(channel_address, 1);
+	return (status === 1)
+}
+
+const is_channel_written = (channel_address) => {
+	// Check if channel has been written to
+	const status = heap_get_byte_at_offset(channel_address, 2);
+	return (status === 1)
+}
 
 //
 // conversions between addresses and JS_value
