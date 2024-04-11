@@ -378,13 +378,13 @@ function initializeEmptyEnvironment(){
 }
 
 /* =============== GOROUTINES =============== */
-const environments = [];
-const runtimeStacks = [];
-const operandStacks = [];
-const pcs = [];
+let environments = [];
+let runtimeStacks = [];
+let operandStacks = [];
+let pcs = [];
 let nRoutines = 0;
 let currentRoutine;
-const activeRoutines = [];
+let activeRoutines = [];
 
 function createNewGoRoutine(){
     const newEnv = initializeEmptyEnvironment();
@@ -445,6 +445,7 @@ function initBaseRoutine(){
     /* Create program's base routine,
        i.e. the one running from the beginning.
     */
+   initSystem();
    nRoutines = 0;
    const baseRoutine = createNewGoRoutine();
    E = environments[baseRoutine];
@@ -466,6 +467,18 @@ function rotateRoutine(){
 
 function isActive(routine){
     return activeRoutines.includes(routine);
+}
+
+function initSystem(){
+    /* Initialize all data structures */
+    environments = [];
+    runtimeStacks = [];
+    operandStacks = [];
+    pcs = [];
+    nRoutines = 0;
+    currentRoutine;
+    activeRoutines = [];
+    init_heap(1000000);
 }
 
 /* ============= RUN AND TESTS ============== */

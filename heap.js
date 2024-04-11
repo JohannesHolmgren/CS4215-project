@@ -32,11 +32,18 @@ const heap_make = (bytes) => {
 };
 
 // we randomly pick a heap size of 1000000 bytes
-const HEAP = heap_make(1000000);
+let HEAP = heap_make(1000000);
 
 // free is the next free index in HEAP
 // we keep allocating as if there was no tomorrow
 let free = 0;
+
+// Initialize new heap
+function init_heap(size) {
+	free = 0;
+	HEAP = heap_make(size);
+}
+
 
 // for debugging: display all bits of the heap
 const heap_display = () => {
