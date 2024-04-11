@@ -1018,7 +1018,7 @@ function peg$parse(input, options) {
         tag: "fun",
         sym: extractOptional(id, 0)['sym'],
         prms: optionalList(extractOptional(params, 0)),
-        body: {tag: "seq", stmts: body['body']}
+        body: {tag: "blk", body: {tag: "seq", stmts: body['body']}}
       };
     };
   var peg$f128 = function(head, tail) {
@@ -10921,4 +10921,8 @@ function peg$parse(input, options) {
   }
 }
 
-const parse = peg$parse;
+module.exports = {
+  StartRules: ["Start"],
+  SyntaxError: peg$SyntaxError,
+  parse: peg$parse
+};

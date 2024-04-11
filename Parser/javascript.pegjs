@@ -427,7 +427,7 @@ ExtendsToken    = "extends"    !IdentifierPart
 FalseToken      = "false"      !IdentifierPart
 FinallyToken    = "finally"    !IdentifierPart
 ForToken        = "for"        !IdentifierPart
-FunctionToken   = "func"   !IdentifierPart
+FunctionToken   = "func"       !IdentifierPart
 GetToken        = "get"        !IdentifierPart
 IfToken         = "if"         !IdentifierPart
 ImportToken     = "import"     !IdentifierPart
@@ -1275,7 +1275,7 @@ FunctionExpression
         tag: "fun",
         sym: extractOptional(id, 0)['sym'],
         prms: optionalList(extractOptional(params, 0)),
-        body: {tag: "seq", stmts: body['body']}
+        body: {tag: "blk", body: {tag: "seq", stmts: body['body']}}
       };
     }
 
