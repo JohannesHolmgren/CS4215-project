@@ -600,7 +600,7 @@ MemberExpression
           tag: "MemberExpression",
           object: result,
           property: element.property,
-          computed: element.computed
+          // computed: element.computed
         };
       }, head);
     }
@@ -967,6 +967,9 @@ Statement
   / ThrowStatement
   / TryStatement
   / DebuggerStatement
+  / SyncStatement
+  / LockStatement
+  / UnlockStatement
   / ArrowStatement
   / Expression
   / GoStatement
@@ -1338,6 +1341,34 @@ ArrowStatement
         right: right
       };
     }
+
+SyncStatement
+ = left:LeftHandSideExpression __ "=" __"sync.Mutex"
+    {
+      return {
+        tag: "sync",
+        sym: left["sym"]
+      }
+    }
+
+LockStatement
+ = left:PropertyName __ ".Lock"
+    {
+      return {
+        tag: "lock",
+        sym: left["sym"]
+      }
+    }
+
+UnlockStatement
+ = left:PropertyName __ ".Unlock"
+    {
+      return {
+        tag: "unlock",
+        sym: left["sym"]
+      }
+    }
+
 
 SourceElement
   = Statement
