@@ -54,16 +54,37 @@ class Pair {
     }
 }
 
+function compare_lists(l1, l2){
+    if (l1.length != l2.length){return false}
+    for (let i = 0; i < l1.length; i++){
+        if (l1[i] != l2[i]){
+            return false
+        }
+    }
+    return true
+}
+
+function contains_sublist(big_list, small_list){
+    for (let sub_list of big_list){
+        if (compare_lists(sub_list, small_list)){
+            return true
+        }
+    }
+    return false
+}
+
+function isCompiledChannel(pos){
+    return contains_sublist(channel_positions, pos)
+}
+
 /* ================ COMPILER ================ */
 let INSTRUCTIONS = [];
 let wc = 0;
+let channel_positions = [];
 
 function compile_component(component, compile_environment) {
     if (component.tag === "lit"){
         INSTRUCTIONS[wc++] = {tag: "LDC", val: component.val}
-    }
-    else if (component.tag === "MakeChannel"){
-        INSTRUCTIONS[wc++] = {tag: "CREATE_CHAN"}
     }
     else if (component.tag === "binop"){
         compile_component(component.frst, compile_environment);
@@ -130,15 +151,25 @@ function compile_component(component, compile_environment) {
     }
     else if (component.tag === "const"){
         compile_component(component.expr, compile_environment);
+        const pos = compile_time_environment_position(compile_environment, component.sym);
         INSTRUCTIONS[wc++] = {
             tag: "ASSIGN",
-            pos: compile_time_environment_position(compile_environment, component.sym)};
+            pos: pos};
+        // If component.expr was channel: save compile_time position to data structure
+        if (component.expr.tag === "MakeChannel"){
+            channel_positions.push(pos)
+        }
     }
     else if (component.tag === "var"){
         compile_component(component.expr, compile_environment);
+        const pos = compile_time_environment_position(compile_environment, component.sym);
         INSTRUCTIONS[wc++] = {
             tag: "ASSIGN",
-            pos: compile_time_environment_position(compile_environment, component.sym)};
+            pos: pos};
+        // If component.expr was channel: save compile_time position to data structure
+        if (component.expr.tag === "MakeChannel"){
+            channel_positions.push(pos)
+        }
     }
     else if (component.tag === "ReturnStatement"){ // Changed from 'ret' and 'component.argument' to match parser
         compile_component(component.argument, compile_environment);
@@ -170,6 +201,30 @@ function compile_component(component, compile_environment) {
         compile_component(component.function, compile_environment);
         // Change "CALL" to "GOCALL"
         INSTRUCTIONS[wc-1] = {tag: "GOCALL", arity: INSTRUCTIONS[wc-1].arity};
+    }
+    else if (component.tag === "MakeChannel"){
+        INSTRUCTIONS[wc++] = {tag: "CREATE_CHAN"}
+    }
+    else if (component.tag === "Arrow"){
+        // Check which side is channel: decides if write or read
+        let instructionTag;
+        const leftSymPos = compile_time_environment_position(compile_environment, component.left.sym);
+        if (isCompiledChannel(leftSymPos)){
+            compile_component(component.right, compile_environment);
+            INSTRUCTIONS[wc++] = {
+                tag: "WRITE_CHANNEL",
+                pos: compile_time_environment_position(compile_environment, component.left.sym)
+            };
+        } else {
+            INSTRUCTIONS[wc++] = {
+                tag: "READ_CHANNEL",
+                pos: compile_time_environment_position(compile_environment, component.right.sym)
+            };
+            INSTRUCTIONS[wc++] = {
+                tag: "ASSIGN",
+                pos: compile_time_environment_position(compile_environment, component.left.sym)
+            };
+        }
     }
     // Possibly add assignment if needed by anything later
     else if (component.tag === undefined){
@@ -206,6 +261,7 @@ function compile_program(program) {
     const primitive_frame = [];
     const compile_environment = [primitive_frame];
     INSTRUCTIONS = [];
+    channel_positions = [];
     wc = 0;
     // Compile program and end the machine code with DONE instruction
     compile_component(program, compile_environment);
@@ -383,6 +439,29 @@ function execute_instruction(instruction) {
         const channel_address = heap_allocate_Channel();
         OS.push(channel_address);
     }
+    else if (instruction.tag === "WRITE_CHANNEL"){
+        const channel_address = lookup(instruction.pos, E);
+        if (!is_channel_written(channel_address)){
+            write_to_channel(channel_address, OS.pop());
+        }
+        if (!is_channel_read(channel_address)){
+            // pc--;
+            console.warn("PC currently not updated in write to channel")
+        }
+        console.log(is_channel_written(channel_address));
+    }
+    else if (instruction.tag === "READ_CHANNEL"){
+        const channel_address = lookup(instruction.pos, E);
+        set_channel_read(channel_address);
+
+        console.log(is_channel_written(channel_address));
+
+        if (is_channel_written(channel_address)){
+            OS.push(read_channel(channel_address));
+        } else {
+            // pc--;
+        }
+    }
     else {
         console.log(instruction);
         throw new Error(`Undefined instruction: ${instruction.tag}`);
@@ -509,7 +588,6 @@ function run(){
         const instruction = INSTRUCTIONS[pc++];
         console.log(`Executes: ${instruction.tag} `);
         execute_instruction(instruction);
-        console.log(pc);
         // console.log(OS);
         // console.log(activeRoutines);
         // console.log(instruction)
