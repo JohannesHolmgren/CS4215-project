@@ -51,10 +51,10 @@
   function buildLogicalExpression(head, tail) {
     return tail.reduce(function(result, element) {
       return {
-        tag: "LogicalExpression",
+        tag: "binop",
         sym: element[1],
-        left: result,
-        right: element[3]
+        frst: result,
+        scnd: element[3]
       };
     }, head);
   }
@@ -1047,7 +1047,7 @@ function peg$parse(input, options) {
     };
   var peg$f133 = function(declarations) {
       return {
-        tag: "GoRoutine",
+        tag: "goroutine",
         function: declarations,
       };
     };
