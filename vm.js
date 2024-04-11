@@ -102,12 +102,13 @@ function compile_component(component, compile_environment) {
         compile_component(component.alt, compile_environment);
         goto_instr.addr = wc;
     }
-    else if (component.tag === "app"){
+    else if (component.tag === "app"){ // Changed from 'args' to 'arguments' to match parser
         compile_component(component.fun, compile_environment);
-        for (let arg of component.args){
+        const args = component.arguments;
+        for (let arg of args){
             compile_component(arg, compile_environment);
         }
-        INSTRUCTIONS[wc++] = {tag: "CALL", arity: component.args.length};
+        INSTRUCTIONS[wc++] = {tag: "CALL", arity: args.length};
     }
     else if (component.tag === "blk"){
         const locals = scan(component.body);
@@ -127,8 +128,8 @@ function compile_component(component, compile_environment) {
             tag: "ASSIGN",
             pos: compile_time_environment_position(compile_environment, component.sym)};
     }
-    else if (component.tag === "ret"){
-        compile_component(component.expr, compile_environment);
+    else if (component.tag === "ReturnStatement"){ // Changed from 'ret' and 'component.argument' to match parser
+        compile_component(component.argument, compile_environment);
         INSTRUCTIONS[wc++] = {tag: "RESET"};
     }
     else if (component.tag === "fun"){
@@ -329,7 +330,7 @@ function execute_instruction(instruction) {
         const callFrame = heap_allocate_Callframe(E, pc);
         RTS.push(callFrame);
         // E = extendEnvironment(args, heap_get_Closure_environment(funcToCall));
-        E = heap_Environment_extend(frame_address, heap_get_Closure_environment(funcToCall));        
+        E = heap_Environment_extend(frame_address, heap_get_Closure_environment(funcToCall));
         pc = heap_get_Closure_pc(funcToCall);
     }
     else if (instruction.tag === "GOCALL"){
@@ -430,7 +431,7 @@ function switchToRoutine(from, to){
     OS = operandStacks[to];
     pc = pcs[to];
     currentRoutine = to;
-    console.log(`Switches to routine ${currentRoutine}`);
+    // console.log(`Switches to routine ${currentRoutine}`);
 }
 
 function killRoutine(routine){
@@ -479,6 +480,7 @@ function run(){
         const instruction = INSTRUCTIONS[pc++];
         // console.log(`Executes: ${instruction.tag} `);
         execute_instruction(instruction);
+        // console.log(OS);
         // console.log(activeRoutines);
         // console.log(instruction)
         // Switch routine
@@ -518,6 +520,7 @@ function test(testcase){
 function setV() {
   let code = document.getElementById("input_box").value;
   let parsed_code = parse(code);
+  // parsed_code = {"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "foo", "prms": [], "body": {"tag": "ReturnStatement", "argument": {"tag": "lit", "val": 1}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "foo"}, "arguments": []}]}};
   console.log(parsed_code)
   compile_program(parsed_code);
   run();
