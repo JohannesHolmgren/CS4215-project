@@ -88,7 +88,15 @@ function compile_component(component, compile_environment) {
             tag: "LD", 
             sym: component.sym, 
             pos: compile_time_environment_position(compile_environment, component.sym)
-        }
+        };
+    }
+    else if (component.tag === "assmt"){
+        compile_component(component.right, compile_environment);
+        INSTRUCTIONS[wc++] = {
+            tag: "ASSIGN",
+            pos: compile_time_environment_position(compile_environment, component.left.sym)
+        };
+
     }
     else if (component.tag === "cond"){
         compile_component(component.pred, compile_environment);
@@ -262,8 +270,8 @@ function execute_instruction(instruction) {
         OS.push(lookup(instruction.pos, E))
     }
     else if(instruction.tag === "BINOP"){
-        const op1 = OS.pop();
         const op2 = OS.pop();
+        const op1 = OS.pop();
         const operand = instruction.sym;
         const res = binop_microcode[operand](op1, op2);
         OS.push(res);
@@ -487,12 +495,13 @@ function run(){
     // Create routine that main program is run as
     currentRoutine = initBaseRoutine();
    
-    // console.log(INSTRUCTIONS);
+    console.log(INSTRUCTIONS);
     while (!(INSTRUCTIONS[pc].tag === "DONE")) {
         // Fetch next instruction and execute
         const instruction = INSTRUCTIONS[pc++];
-        // console.log(`Executes: ${instruction.tag} `);
+        console.log(`Executes: ${instruction.tag} `);
         execute_instruction(instruction);
+        console.log(pc);
         // console.log(OS);
         // console.log(activeRoutines);
         // console.log(instruction)
