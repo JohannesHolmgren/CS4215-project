@@ -10824,7 +10824,7 @@ function peg$parse(input, options) {
   }
 
   function peg$parseMakeStatement() {
-    var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9;
+    var s0, s1, s2, s3, s4, s5, s6, s7, s8;
 
     s0 = peg$currPos;
     s1 = peg$parseMakeToken();
@@ -10856,9 +10856,8 @@ function peg$parse(input, options) {
             if (peg$silentFails === 0) { peg$fail(peg$e103); }
           }
           if (s7 !== peg$FAILED) {
-            s8 = peg$parse__();
-            s9 = peg$parseEOS();
-            if (s9 !== peg$FAILED) {
+            s8 = peg$parseEOS();
+            if (s8 !== peg$FAILED) {
               peg$savedPos = s0;
               s0 = peg$f134();
             } else {
