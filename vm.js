@@ -64,7 +64,7 @@ function compile_component(component, compile_environment) {
     }
     else if (component.tag === "binop"){
         compile_component(component.frst, compile_environment);
-        compile_component(component.scnd), compile_environment;
+        compile_component(component.scnd, compile_environment);
         INSTRUCTIONS[wc++] = {tag: "BINOP", sym: component.sym}
     }
     else if (component.tag === "unop"){
@@ -111,6 +111,7 @@ function compile_component(component, compile_environment) {
         goto_instr.addr = wc;
     }
     else if (component.tag === "app"){ // Changed from 'args' to 'arguments' to match parser
+        console.log(compile_environment)
         compile_component(component.fun, compile_environment);
         const args = component.arguments;
         for (let arg of args){
