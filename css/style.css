@@ -2,10 +2,16 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    background-color: #31363F;
-    color: #EEEEEE
+    color: #EEEEEE;
+    --backgroundColor: #181818;
+    --editorColor: #242424;
 }
 
+body {
+    background-color: var(--backgroundColor);
+}
+
+#input_box:focus,
 #input_box {
     margin-left: 1vw;
     margin-top: 1vw;
@@ -14,7 +20,8 @@
     width: 49vw;
     border-radius: 5px;
     font-family: 'Courier';
-    background-color: #222831;
+    background-color: var(--editorColor);
+    outline-width: 0px;
 }
 
 #run-button {
@@ -39,6 +46,7 @@
     width: 49vw;
     height: 50px;
     border-radius: 5px;
+    background-color: var(--editorColor);
 
-    border: 1px solid #EEEEEE;
+    border: 0.5px solid #EEEEEE;
 }

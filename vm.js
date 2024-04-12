@@ -438,7 +438,7 @@ function execute_instruction(instruction) {
             write_to_channel(channel_address, OS.pop());
         }
         if (!is_channel_read(channel_address)){
-            // pc--;
+            pc--;
             console.warn("PC currently not updated in write to channel")
         }
     }
@@ -448,7 +448,7 @@ function execute_instruction(instruction) {
         if (is_channel_written(channel_address)){
             OS.push(read_channel(channel_address));
         } else {
-            // pc--;
+            pc--;
             console.warn("PC currently not updated in read to channel")
         }
     }
