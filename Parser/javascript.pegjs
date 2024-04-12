@@ -1382,5 +1382,3 @@ UnlockStatement
 SourceElement
   = Statement
   / FunctionDeclaration
-
-const parse = peg$parse;

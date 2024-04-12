@@ -11062,3 +11062,4 @@ function peg$parse(input, options) {
   }
 }
 
+const parse = peg$parse;
