@@ -64,6 +64,7 @@
   }
 
   function findParamNames(param_list) {
+    if (param_list === null){return []}
     var param_name_list = [];
     for (let param of param_list){
       param_name_list.push(param['sym'])
@@ -11061,4 +11062,3 @@ function peg$parse(input, options) {
   }
 }
 
-const parse = peg$parse;
