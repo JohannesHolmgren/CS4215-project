@@ -55,6 +55,14 @@
   function optionalList(value) {
     return value !== null ? value : [];
   }
+
+  function findParamNames(param_list) {
+    var param_name_list = [];
+    for (let param of param_list){
+      param_name_list.push(param['sym'])
+    }
+    return param_name_list;
+  }
 }}
 
 Start
@@ -1277,7 +1285,7 @@ FunctionExpression
       return {
         tag: "fun",
         sym: extractOptional(id, 0)['sym'],
-        prms: optionalList(extractOptional(params, 0)),
+        prms: findParamNames(extractOptional(params, 0)),
         body: {tag: "blk", body: {tag: "seq", stmts: body['body']}}
       };
     }
