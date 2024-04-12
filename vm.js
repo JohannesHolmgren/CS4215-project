@@ -135,7 +135,6 @@ function compile_component(component, compile_environment) {
         goto_instr.addr = wc;
     }
     else if (component.tag === "app"){ // Changed from 'args' to 'arguments' to match parser
-        console.log(compile_environment)
         compile_component(component.fun, compile_environment);
         const args = component.arguments;
         for (let arg of args){
@@ -183,6 +182,7 @@ function compile_component(component, compile_environment) {
             expr: {
                     tag: "lam", 
                     prms: component.prms, 
+                    arity: component.prms.length,
                     body: component.body
                 }
             }, compile_environment);
@@ -298,6 +298,16 @@ const unop_microcode = {
 };
 
 function lookup(pos, environment){
+    /*
+    const n_children = heap_get_number_of_children(environment)
+    console.log(`size of environment: ${n_children}`);
+    console.log(`Size of frames: `)
+    for(let i = 0; i < n_children; i++){
+        const addr = heap_get_child(environment, i);
+        console.log(`Frame tag: ${heap_get_tag(addr)}`);
+        console.log(`${i}: ${heap_get_number_of_children(addr)}`);
+    }
+    */
     return heap_get_Environment_value(environment, pos);
 }
 
@@ -324,23 +334,31 @@ function extendEnvironment(values, env){
 
 function execute_instruction(instruction) {
     if(instruction.tag === "LDC"){
-        OS.push(instruction.val);
+        const addr = JS_value_to_address(instruction.val);
+        OS.push(addr);
+        console.log(instruction.val)
+        console.log(addr)
+        console.log(is_boolean(instruction.val));
     }
     else if(instruction.tag === "LD"){
+        console.log(`Position for ${instruction.sym}: ${instruction.pos} with environment ${E} gives value ${lookup(instruction.pos, E)}`);
+        console.log(`Its frame: ${instruction.pos[0]}`);
+        display_Frame(heap_get_child(E, instruction.pos[0]));
         OS.push(lookup(instruction.pos, E))
     }
     else if(instruction.tag === "BINOP"){
-        const op2 = OS.pop();
-        const op1 = OS.pop();
+        const op2 = address_to_JS_value(OS.pop());
+        const op1 = address_to_JS_value(OS.pop());
         const operand = instruction.sym;
         const res = binop_microcode[operand](op1, op2);
-        OS.push(res);
+        const resultAddress = JS_value_to_address(res);
+        OS.push(resultAddress);
     }
     else if(instruction.tag === "UNOP"){
-        const op1 = OS.pop();
+        const op1 = address_to_JS_value(OS.pop());
         const operand = instruction.sym;
         const res = unop_microcode[operand](op1);
-        OS.push(res);
+        OS.push(JS_value_to_address(res));
     }
     else if(instruction.tag === "POP"){
         OS.pop();
@@ -364,7 +382,7 @@ function execute_instruction(instruction) {
         const new_frame = heap_allocate_Frame(instruction.num);
         E = heap_Environment_extend(new_frame, E);
         for (let i=0; i < instruction.num; i++){
-            heap_set_child(new_frame, i, undefined);
+            heap_set_child(new_frame, i, Unassigned);
         }
 
         /*
@@ -448,18 +466,15 @@ function execute_instruction(instruction) {
             // pc--;
             console.warn("PC currently not updated in write to channel")
         }
-        console.log(is_channel_written(channel_address));
     }
     else if (instruction.tag === "READ_CHANNEL"){
         const channel_address = lookup(instruction.pos, E);
         set_channel_read(channel_address);
-
-        console.log(is_channel_written(channel_address));
-
         if (is_channel_written(channel_address)){
             OS.push(read_channel(channel_address));
         } else {
             // pc--;
+            console.warn("PC currently not updated in read to channel")
         }
     }
     else {
@@ -469,7 +484,9 @@ function execute_instruction(instruction) {
 }
 
 function initializeEmptyEnvironment(){
-    return heap_allocate_Environment(0);
+    const newEnv =  heap_allocate_Environment(0);
+    display_Environment(newEnv);
+    return newEnv
 }
 
 /* =============== GOROUTINES =============== */
@@ -594,6 +611,8 @@ function run(){
         // Switch routine
         rotateRoutine();
     }
+
+
 }
 
 /* === Test Cases === */
@@ -632,6 +651,9 @@ function setV() {
   console.log(parsed_code)
   compile_program(parsed_code);
   run();
-  document.getElementById("output_div").innerHTML = OS.slice(-1)
+  console.log(OS.slice(-1)[0])
+  console.log(address_to_JS_value(1))
+  console.log(is_True(1));
+  document.getElementById("output_div").innerHTML = address_to_JS_value(OS.slice(-1)[0])
 
 }

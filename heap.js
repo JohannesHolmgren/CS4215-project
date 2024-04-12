@@ -9,6 +9,8 @@ const push = (array, ...items) => {
 	for (let item of items) {
 		array.push(item);
 	}
+	console.log(`new compile environemnt:`)
+	console.log(array);
 	return array;
 };
 
@@ -40,8 +42,7 @@ let free = 0;
 
 // Initialize new heap
 function init_heap(size) {
-	free = 0;
-	HEAP = heap_make(size);
+	free = freeStart;
 }
 
 
@@ -91,8 +92,13 @@ const heap_get_size = (address) =>
 // the number of children is one less than the size
 // except for number nodes:
 //                 they have size 2 but no children
+// const heap_get_number_of_children = (address) =>
+// 	heap_get_tag(address) === Number_tag ? 0 : get_size(address) - 1;
+
 const heap_get_number_of_children = (address) =>
-	heap_get_tag(address) === Number_tag ? 0 : heap_get_size(address) - 1;
+	heap_get_tag(address) === Number_tag
+		? 0
+		:  heap_get_size(address) - 1;
 
 // access byte in heap, using address and offset
 const heap_set_byte_at_offset = (address, offset, value) =>
@@ -321,6 +327,8 @@ const is_Gocallframe = (address) => heap_get_tag(address) === Callframe_tag && h
 const heap_allocate_Frame = (number_of_values) =>
 	heap_allocate(Frame_tag, number_of_values + 1);
 
+const is_Frame = (address) => heap_get_tag(address) === Frame_tag;
+
 const heap_Frame_display = (address) => {
 	console.log("Frame: ");
 	const size = heap_get_number_of_children(address);
@@ -372,8 +380,43 @@ const heap_Environment_extend = (frame_address, env_address) => {
 		heap_set_child(new_env_address, i, heap_get_child(env_address, i));
 	}
 	heap_set_child(new_env_address, i, frame_address);
+
+	display_Environment(new_env_address);
+
 	return new_env_address;
 };
+
+const display_Environment = (env) => {
+	const n_children = heap_get_number_of_children(env);
+	const tag = heap_get_tag(env);
+	console.log(`======= Environment information =======`);
+	console.log(`Address: ${env}`)
+	console.log(`Tag: ${tag}`)
+	console.log(`Number of frames: ${n_children}`)
+	console.log(`Frame information`)
+	for (let i=0; i < n_children; i++){
+		const addr = heap_get_child(env, i);
+		console.log(`	Frame ${i}`);
+		display_Frame(addr)
+	}
+	console.log(`=======================================`);
+}
+
+const display_Frame = (frame) => {
+	console.log(`		Address: ${frame}`)
+	console.log(`		Tag: ${heap_get_tag(frame)}`)
+	console.log(`		Frame size: ${heap_get_number_of_children(frame)}`);
+	console.log(`		Children: `);
+	for (let i=0; i < heap_get_number_of_children(frame);i ++){
+		const child = heap_get_child(frame, i);
+		console.log(`Child ${i}`);
+		console.log(`			Address: ${child}`);
+		console.log(`			Tag: ${heap_get_tag(child)}`);
+		if (is_Number(child)){
+			console.log(`			Value: ${heap_get(child+1)}`);
+		}
+	}
+}
 
 // Added to handle goroutines
 // Copy an environment by doing like the above 
@@ -424,6 +467,7 @@ const is_Pair = (address) => heap_get_tag(address) === Pair_tag;
 const heap_allocate_Number = (n) => {
 	const number_address = heap_allocate(Number_tag, 2);
 	heap_set(number_address + 1, n);
+	console.log(`Number ${n} allocated at address ${number_address}`)
 	return number_address;
 };
 
@@ -501,6 +545,13 @@ const address_to_JS_value = (x) =>
 		: is_Builtin(x)
 		? "<builtin>"
 		: "unknown word tag: " + word_to_string(x);
+
+const is_boolean = (value) => typeof(value) === "boolean"
+const is_number = (value) => typeof(value) === "number"
+const is_undefined = (value) => typeof(value) === "undefined"
+const is_null = (value) => value == null
+const is_string = (value) => typeof(value) === "string"
+const is_pair = (value) => typeof(value) === pair
 
 const JS_value_to_address = (x) =>
 	is_boolean(x)
@@ -632,3 +683,6 @@ let new_env = compile_time_environment_extend(prms, global_compile_environment);
 const empty_frame_address = heap_allocate_Frame(1);
 const heap_empty_Environment = heap_allocate_Environment(0);
 const environment = heap_Environment_extend(empty_frame_address, heap_empty_Environment); */
+const freeStart = free;
+
+console.log(freeStart)
