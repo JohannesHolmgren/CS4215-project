@@ -9,8 +9,6 @@ const push = (array, ...items) => {
 	for (let item of items) {
 		array.push(item);
 	}
-	console.log(`new compile environemnt:`)
-	console.log(array);
 	return array;
 };
 
@@ -381,8 +379,6 @@ const heap_Environment_extend = (frame_address, env_address) => {
 	}
 	heap_set_child(new_env_address, i, frame_address);
 
-	display_Environment(new_env_address);
-
 	return new_env_address;
 };
 
@@ -409,7 +405,7 @@ const display_Frame = (frame) => {
 	console.log(`		Children: `);
 	for (let i=0; i < heap_get_number_of_children(frame);i ++){
 		const child = heap_get_child(frame, i);
-		console.log(`Child ${i}`);
+		console.log(`			Child ${i}`);
 		console.log(`			Address: ${child}`);
 		console.log(`			Tag: ${heap_get_tag(child)}`);
 		if (is_Number(child)){
@@ -428,8 +424,6 @@ const heap_Environment_copy = (env_address) => {
 	for (i = 0; i < old_size - 1; i++) {
 		heap_set_child(new_env_address, i, heap_get_child(env_address, i));
 	}
-	// heap_Environment_display(env_address);
-	// heap_Environment_display(new_env_address);
 	return new_env_address;
 }
 
@@ -467,7 +461,6 @@ const is_Pair = (address) => heap_get_tag(address) === Pair_tag;
 const heap_allocate_Number = (n) => {
 	const number_address = heap_allocate(Number_tag, 2);
 	heap_set(number_address + 1, n);
-	console.log(`Number ${n} allocated at address ${number_address}`)
 	return number_address;
 };
 
@@ -666,7 +659,7 @@ const primitive_object = {};
  */
 
 const compile_time_environment_extend = (vs, e) => {
-	//  make shallow copy of e
+	//  make shallow copy of e)
 	return push([...e], vs);
 };
 
@@ -684,5 +677,3 @@ const empty_frame_address = heap_allocate_Frame(1);
 const heap_empty_Environment = heap_allocate_Environment(0);
 const environment = heap_Environment_extend(empty_frame_address, heap_empty_Environment); */
 const freeStart = free;
-
-console.log(freeStart)

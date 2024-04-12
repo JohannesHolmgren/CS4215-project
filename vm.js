@@ -259,7 +259,7 @@ function scan(component){
 function compile_program(program) {
     // Reset instruction sequence
     const primitive_frame = [];
-    const compile_environment = [primitive_frame];
+    const compile_environment = [];
     INSTRUCTIONS = [];
     channel_positions = [];
     wc = 0;
@@ -298,16 +298,6 @@ const unop_microcode = {
 };
 
 function lookup(pos, environment){
-    /*
-    const n_children = heap_get_number_of_children(environment)
-    console.log(`size of environment: ${n_children}`);
-    console.log(`Size of frames: `)
-    for(let i = 0; i < n_children; i++){
-        const addr = heap_get_child(environment, i);
-        console.log(`Frame tag: ${heap_get_tag(addr)}`);
-        console.log(`${i}: ${heap_get_number_of_children(addr)}`);
-    }
-    */
     return heap_get_Environment_value(environment, pos);
 }
 
@@ -336,14 +326,8 @@ function execute_instruction(instruction) {
     if(instruction.tag === "LDC"){
         const addr = JS_value_to_address(instruction.val);
         OS.push(addr);
-        console.log(instruction.val)
-        console.log(addr)
-        console.log(is_boolean(instruction.val));
     }
     else if(instruction.tag === "LD"){
-        console.log(`Position for ${instruction.sym}: ${instruction.pos} with environment ${E} gives value ${lookup(instruction.pos, E)}`);
-        console.log(`Its frame: ${instruction.pos[0]}`);
-        display_Frame(heap_get_child(E, instruction.pos[0]));
         OS.push(lookup(instruction.pos, E))
     }
     else if(instruction.tag === "BINOP"){
@@ -384,14 +368,6 @@ function execute_instruction(instruction) {
         for (let i=0; i < instruction.num; i++){
             heap_set_child(new_frame, i, Unassigned);
         }
-
-        /*
-        const new_frame = {};
-        for(let i=0; i<locals.length;i++){
-            new_frame[locals[i]] = {tag: "unassigned"};
-        }
-        E = new Pair(new_frame, E);
-        */
     }
     else if (instruction.tag === "EXIT_SCOPE"){
         // Reset the previous environment from RTS
@@ -415,7 +391,6 @@ function execute_instruction(instruction) {
         const funcToCall = OS.pop();
         const callFrame = heap_allocate_Callframe(E, pc);
         RTS.push(callFrame);
-        // E = extendEnvironment(args, heap_get_Closure_environment(funcToCall));
         E = heap_Environment_extend(frame_address, heap_get_Closure_environment(funcToCall));
         pc = heap_get_Closure_pc(funcToCall);
     }
@@ -485,7 +460,6 @@ function execute_instruction(instruction) {
 
 function initializeEmptyEnvironment(){
     const newEnv =  heap_allocate_Environment(0);
-    display_Environment(newEnv);
     return newEnv
 }
 
@@ -599,7 +573,7 @@ function run(){
     // Create routine that main program is run as
     currentRoutine = initBaseRoutine();
    
-    console.log(INSTRUCTIONS);
+    // console.log(INSTRUCTIONS);
     while (!(INSTRUCTIONS[pc].tag === "DONE")) {
         // Fetch next instruction and execute
         const instruction = INSTRUCTIONS[pc++];
@@ -651,9 +625,6 @@ function setV() {
   console.log(parsed_code)
   compile_program(parsed_code);
   run();
-  console.log(OS.slice(-1)[0])
-  console.log(address_to_JS_value(1))
-  console.log(is_True(1));
   document.getElementById("output_div").innerHTML = address_to_JS_value(OS.slice(-1)[0])
 
 }
