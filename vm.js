@@ -98,7 +98,7 @@ function compile_component(component, compile_environment) {
     else if (component.tag === "seq"){
         const sequence = component.stmts
         if (sequence.length === 0){
-            INSTRUCTIONS[wc++] = {tag: "LDC", val:undefined}
+            INSTRUCTIONS[wc++] = {tag: "LDC", val:Undefined}
             console.log("MAYBE UNDEFINED");
         }
         let frst = true;
@@ -206,9 +206,20 @@ function compile_component(component, compile_environment) {
         INSTRUCTIONS[wc++] = {tag: "CREATE_CHAN"}
     }
     else if (component.tag === "Arrow"){
+        compile_component(component.right, compile_environment);
+        INSTRUCTIONS[wc++] = {
+            tag: "USE_CHANNEL",
+            left: compile_time_environment_position(compile_environment, component.left.sym),
+            
+        }
+
         // Check which side is channel: decides if write or read
-        let instructionTag;
-        const leftSymPos = compile_time_environment_position(compile_environment, component.left.sym);
+
+        // Want to compile left side
+        // compile right side
+        // Add a read channel with both of the other ones on the stack
+        // const 
+        /* const leftSymPos = compile_time_environment_position(compile_environment, component.left.sym);
         if (isCompiledChannel(leftSymPos)){
             compile_component(component.right, compile_environment);
             INSTRUCTIONS[wc++] = {
@@ -224,7 +235,7 @@ function compile_component(component, compile_environment) {
                 tag: "ASSIGN",
                 pos: compile_time_environment_position(compile_environment, component.left.sym)
             };
-        }
+        } */
     }
     // Possibly add assignment if needed by anything later
     else if (component.tag === undefined){
@@ -322,6 +333,32 @@ function extendEnvironment(values, env){
     */
 }
 
+function read_channel(channel, receiver){
+    heap_set_channel_read(channel);
+    if (heap_is_channel_written(channel)){
+        const val = heap_read_channel(channel);
+        OS.pop() // Remove channel address from OS
+        OS.push(val);
+        // Assign to receiver the value
+        assign(receiver, val, E);
+    } else {
+        pc--;
+        // console.warn("PC currently not updated in read to channel")
+    }
+}
+
+function write_channel(channel) {
+    if (!heap_is_channel_written(channel)){
+        const val = OS.pop();
+        heap_write_to_channel(channel, val);
+        const read_addr = heap_read_channel(channel);
+    }
+    if (!heap_is_channel_read(channel)){
+        pc--;
+        // console.warn("PC currently not updated in write to channel")
+    }
+}
+
 function execute_instruction(instruction) {
     if(instruction.tag === "LDC"){
         const addr = JS_value_to_address(instruction.val);
@@ -395,20 +432,25 @@ function execute_instruction(instruction) {
         pc = heap_get_Closure_pc(funcToCall);
     }
     else if (instruction.tag === "GOCALL"){
+        // Get args and func from old OS
+        const args = [];
+        for (let i=instruction.arity-1; i>=0; i--){
+            args[i] = OS.pop()
+        }
+        const funcToCall = OS.pop();
+        
         // Clone current E, RTS, OS, PC and do call with the new ones
         const routine = createNewGoRoutineFromCurrent();
         switchToRoutine(currentRoutine, routine);
-        // execute_instruction({tag: "CALL", arity: instruction.arity});
 
         // On OS: all arguments above function itself
         // Load arguments backwards since pushed so
-        const args = [];
         const frame_address = heap_allocate_Frame(instruction.arity);
         for (let i=instruction.arity-1; i>=0; i--){
-            args[i] = OS.pop();
+            // args[i] = OS.pop();
             heap_set_child(frame_address, i, args[i]);
         }
-        const funcToCall = OS.pop();
+        // const funcToCall = OS.pop();
         const callFrame = heap_allocate_Gocallframe(E, pc); // Different from above
         RTS.push(callFrame);
         // E = extendEnvironment(args, heap_get_Closure_environment(funcToCall));
@@ -420,7 +462,6 @@ function execute_instruction(instruction) {
         pc--;
         const topFrame = RTS.pop();
         if (is_Gocallframe(topFrame)){
-            console.log("GOCALLFRAME FOUND");
             killRoutine(currentRoutine);
         }
         if (is_Callframe(topFrame)){
@@ -432,14 +473,14 @@ function execute_instruction(instruction) {
         const channel_address = heap_allocate_Channel();
         OS.push(channel_address);
     }
-    else if (instruction.tag === "WRITE_CHANNEL"){
+    /* else if (instruction.tag === "WRITE_CHANNEL"){
         const channel_address = lookup(instruction.pos, E);
         if (!is_channel_written(channel_address)){
             write_to_channel(channel_address, OS.pop());
         }
         if (!is_channel_read(channel_address)){
             pc--;
-            console.warn("PC currently not updated in write to channel")
+            // console.warn("PC currently not updated in write to channel")
         }
     }
     else if (instruction.tag === "READ_CHANNEL"){
@@ -449,7 +490,25 @@ function execute_instruction(instruction) {
             OS.push(read_channel(channel_address));
         } else {
             pc--;
-            console.warn("PC currently not updated in read to channel")
+            // console.warn("PC currently not updated in read to channel")
+        }
+    } */
+    else if (instruction.tag === "USE_CHANNEL"){
+        // Two cases:
+        //  1. left side is channel
+        //    What's on the stack is what to write to the channel
+        //    Write to the channel
+        //  2. left side is not channel
+        //    Means that right side should be a channel
+        //    and thus what's on the OS is channel's address
+        //    Left side is variable to assign with channel value
+        //    Read from the channel
+        const address = lookup(instruction.left, E);
+        if (is_Channel(address)){
+            write_channel(address);
+        } else {
+            const channel_address = peek(OS);
+            read_channel(channel_address, instruction.left);
         }
     }
     else {
@@ -573,11 +632,11 @@ function run(){
     // Create routine that main program is run as
     currentRoutine = initBaseRoutine();
    
-    // console.log(INSTRUCTIONS);
+    console.log(INSTRUCTIONS);
     while (!(INSTRUCTIONS[pc].tag === "DONE")) {
         // Fetch next instruction and execute
         const instruction = INSTRUCTIONS[pc++];
-        console.log(`Executes: ${instruction.tag} `);
+        // console.log(`Executes: ${instruction.tag} `);
         execute_instruction(instruction);
         // console.log(OS);
         // console.log(activeRoutines);

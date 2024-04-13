@@ -480,30 +480,32 @@ const heap_allocate_Channel = () => {
 	return channel_address;
 };
 
-const write_to_channel = (channel_address, value) => {
+const is_Channel = (address) => heap_get_tag(address) === Channel_tag;
+
+const heap_write_to_channel = (channel_address, value) => {
 	// Set written to and write value
 	heap_set_byte_at_offset(channel_address, 2, 1)
 	heap_set(channel_address + 1, value)
 }
 
-const set_channel_read = (channel_address) => {
+const heap_set_channel_read = (channel_address) => {
 	// Set channel to ready to read
 	heap_set_byte_at_offset(channel_address, 1, 1)
 }
 
-const read_channel = (channel_address) => {
+const heap_read_channel = (channel_address) => {
 	// Set ready to read from and read value
 	return heap_get(channel_address + 1)
 
 }
 
-const is_channel_read = (channel_address) => {
+const heap_is_channel_read = (channel_address) => {
 	// Check if channel is ready to read from
 	const status = heap_get_byte_at_offset(channel_address, 1);
 	return (status === 1)
 }
 
-const is_channel_written = (channel_address) => {
+const heap_is_channel_written = (channel_address) => {
 	// Check if channel has been written to
 	const status = heap_get_byte_at_offset(channel_address, 2);
 	return (status === 1)
