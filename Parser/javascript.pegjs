@@ -1334,7 +1334,7 @@ GoStatement
     }
 
 MakeStatement
-  = MakeToken __ "(" __ "chan" __  ")" EOS {
+  = MakeToken __ "(" __ "chan" __  ")" {
       return {
         tag: "MakeChannel",
       };
