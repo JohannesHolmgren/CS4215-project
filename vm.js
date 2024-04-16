@@ -409,7 +409,7 @@ function execute_instruction(instruction) {
     }
     else if (instruction.tag === "EXIT_SCOPE"){
         // Reset the previous environment from RTS
-        E = RTS.pop().env;
+        E = heap_get_Blockframe_environment(RTS.pop());
     }
     else if (instruction.tag === "LDF"){
         const arity = instruction.arity;
