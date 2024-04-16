@@ -126,8 +126,6 @@ function compile_component(component, compile_environment) {
         const jump_on_false_instr = {tag: "JOF"};
         INSTRUCTIONS[wc++] = jump_on_false_instr;
         compile_component(component.cons, compile_environment);
-        console.log(`Cons`);
-        console.log(component.cons);
         const goto_instr = {tag: "GOTO"};
         INSTRUCTIONS[wc++] = goto_instr;
         const alternative_address = wc;
@@ -159,10 +157,6 @@ function compile_component(component, compile_environment) {
         INSTRUCTIONS[wc++] = {
             tag: "ASSIGN",
             pos: pos};
-        /* // If component.expr was channel: save compile_time position to data structure
-        if (component.expr.tag === "MakeChannel"){
-            channel_positions.push(pos)
-        } */
     }
     else if (component.tag === "var"){
         const pos = compile_time_environment_position(compile_environment, component.sym);
@@ -174,10 +168,6 @@ function compile_component(component, compile_environment) {
         INSTRUCTIONS[wc++] = {
             tag: "ASSIGN",
             pos: pos};
-        /* // If component.expr was channel: save compile_time position to data structure
-        if (component.expr.tag === "MakeChannel"){
-            channel_positions.push(pos)
-        } */
     }
     else if (component.tag === "ReturnStatement"){ // Changed from 'ret' and 'component.argument' to match parser
         compile_component(component.argument, compile_environment);
@@ -210,6 +200,7 @@ function compile_component(component, compile_environment) {
         compile_component(component.function, compile_environment);
         // Change "CALL" to "GOCALL"
         INSTRUCTIONS[wc-1] = {tag: "GOCALL", arity: INSTRUCTIONS[wc-1].arity};
+        INSTRUCTIONS[wc++] = {tag: "LDC", val: undefined};
     }
     else if (component.tag === "MakeChannel"){
         INSTRUCTIONS[wc++] = {tag: "CREATE_CHAN"}
@@ -221,30 +212,6 @@ function compile_component(component, compile_environment) {
             left: compile_time_environment_position(compile_environment, component.left.sym),
             
         }
-
-        // Check which side is channel: decides if write or read
-
-        // Want to compile left side
-        // compile right side
-        // Add a read channel with both of the other ones on the stack
-        // const 
-        /* const leftSymPos = compile_time_environment_position(compile_environment, component.left.sym);
-        if (isCompiledChannel(leftSymPos)){
-            compile_component(component.right, compile_environment);
-            INSTRUCTIONS[wc++] = {
-                tag: "WRITE_CHANNEL",
-                pos: compile_time_environment_position(compile_environment, component.left.sym)
-            };
-        } else {
-            INSTRUCTIONS[wc++] = {
-                tag: "READ_CHANNEL",
-                pos: compile_time_environment_position(compile_environment, component.right.sym)
-            };
-            INSTRUCTIONS[wc++] = {
-                tag: "ASSIGN",
-                pos: compile_time_environment_position(compile_environment, component.left.sym)
-            };
-        } */
     }
     // Possibly add assignment if needed by anything later
     else if (component.tag === undefined){
@@ -482,26 +449,6 @@ function execute_instruction(instruction) {
         const channel_address = heap_allocate_Channel();
         OS.push(channel_address);
     }
-    /* else if (instruction.tag === "WRITE_CHANNEL"){
-        const channel_address = lookup(instruction.pos, E);
-        if (!is_channel_written(channel_address)){
-            write_to_channel(channel_address, OS.pop());
-        }
-        if (!is_channel_read(channel_address)){
-            pc--;
-            // console.warn("PC currently not updated in write to channel")
-        }
-    }
-    else if (instruction.tag === "READ_CHANNEL"){
-        const channel_address = lookup(instruction.pos, E);
-        set_channel_read(channel_address);
-        if (is_channel_written(channel_address)){
-            OS.push(read_channel(channel_address));
-        } else {
-            pc--;
-            // console.warn("PC currently not updated in read to channel")
-        }
-    } */
     else if (instruction.tag === "USE_CHANNEL"){
         // Two cases:
         //  1. left side is channel
