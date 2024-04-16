@@ -513,11 +513,11 @@ const heap_is_channel_written = (channel_address) => {
 }
 
 const heap_set_channel_dormant_routine = (channel, routine) => {
-	heap_set_child(channel, 2, routine);
+	heap_set_child(channel, 1, routine);
 }
 
 const heap_get_channel_dormant_routine = (channel) => {
-	return heap_get_child(channel, 2);
+	return heap_get_child(channel, 1);
 }
 
 //
