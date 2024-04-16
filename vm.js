@@ -150,26 +150,34 @@ function compile_component(component, compile_environment) {
         INSTRUCTIONS[wc++] = {tag: "EXIT_SCOPE"};
     }
     else if (component.tag === "const"){
-        compile_component(component.expr, compile_environment);
         const pos = compile_time_environment_position(compile_environment, component.sym);
+        if (is_null(component.expr)){
+            INSTRUCTIONS[wc++] = {tag: "LDC", val: undefined}
+        } else {
+            compile_component(component.expr, compile_environment);
+        }
         INSTRUCTIONS[wc++] = {
             tag: "ASSIGN",
             pos: pos};
-        // If component.expr was channel: save compile_time position to data structure
+        /* // If component.expr was channel: save compile_time position to data structure
         if (component.expr.tag === "MakeChannel"){
             channel_positions.push(pos)
-        }
+        } */
     }
     else if (component.tag === "var"){
-        compile_component(component.expr, compile_environment);
         const pos = compile_time_environment_position(compile_environment, component.sym);
+        if (is_null(component.expr)){
+            INSTRUCTIONS[wc++] = {tag: "LDC", val: undefined}
+        } else {
+            compile_component(component.expr, compile_environment);
+        }
         INSTRUCTIONS[wc++] = {
             tag: "ASSIGN",
             pos: pos};
-        // If component.expr was channel: save compile_time position to data structure
+        /* // If component.expr was channel: save compile_time position to data structure
         if (component.expr.tag === "MakeChannel"){
             channel_positions.push(pos)
-        }
+        } */
     }
     else if (component.tag === "ReturnStatement"){ // Changed from 'ret' and 'component.argument' to match parser
         compile_component(component.argument, compile_environment);
