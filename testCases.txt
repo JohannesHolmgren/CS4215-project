@@ -1,0 +1,80 @@
+// Basic arithmetic
+1 + 1
+4 - 3
+5 * 3
+10 / 2
+
+// Variable declaration
+var x = 1
+x
+
+var x = 5
+x = 2
+x
+
+const x = 5
+x
+
+// Conditionals
+var v = 0
+if (1 > 0){
+    v = 1
+}
+
+else{
+    v = 2
+}
+
+// Loops
+var v = 0
+for (var i = 0; i < 5; i++){
+    v = v + i
+}
+
+// Functions
+func add(x, y){
+    return x + y
+}
+
+
+// Go calls
+func add(x,y){
+    return x + y
+}
+go add(1,2)
+
+var a = 100 // This is example of race condition, when we reach end of program program is done
+func addToA(x){
+    a = a + x
+}
+go add(55)
+a
+
+var a = 100
+func addToA(x){
+    a = a + x
+}
+go add(55)
+1+1
+1+1
+1+1
+1+1
+a
+
+
+// Channels
+var c = make(chan)
+func add(x,y){
+    c <- x + y
+}
+
+go add(10,20)
+var a = 10
+a <- c
+a
+
+// Notes: 
+consts can be reassigned
+conditionals give weird results
+for statements don't seem to work
+super strange bug with function names with capital letters

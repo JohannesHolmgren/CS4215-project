@@ -1059,7 +1059,8 @@ IfStatement
       return {
         tag: "cond",
         pred: test,
-        cons: consequent,
+        //cons: consequent,
+        cons: {"tag": "blk", "body" : {"tag": "seq", stmts: consequent['body']}},
         alt: alternate
       };
     }
@@ -1068,7 +1069,7 @@ IfStatement
       return {
         tag: "cond",
         pred: test,
-        cons: consequent,
+        cons: {"tag": "blk", "body" : {"tag": "seq", stmts: consequent['body']}},
         alt: {"tag":"seq","stmts":[]}
       };
     }

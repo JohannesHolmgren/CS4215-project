@@ -8,7 +8,7 @@ let tests = [
   // ["const y = 16 \n y", '{"tag":"blk","body":{"tag":"seq","stmts":[{"tag":"const","sym":"y","expr":{"tag":"lit","val":16}},{"tag":"nam","sym":"y"}]}}'],
   // ["var y = 16 \n y", '{"tag":"blk","body":{"tag":"seq","stmts":[{"tag":"var","sym":"y","expr":{"tag":"lit","val":16}},{"tag":"nam","sym":"y"}]}}'],
   // //["if (true){true}", '{"tag":"blk","body":{"tag":"seq","stmts":[{"tag":"cond","pred":{"tag":"lit","val":true},"cons":{"tag":"lit","val":true},"alt":{"tag":"seq","stmts":[]}}]}}']
-  "func foo() { return 1 }",
+  "const x = 1 \n if (1 > 0) {x = 2} else {x = 3} \n x",
 
 
 ]
