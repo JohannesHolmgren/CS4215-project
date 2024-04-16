@@ -98,8 +98,7 @@ function compile_component(component, compile_environment) {
     else if (component.tag === "seq"){
         const sequence = component.stmts
         if (sequence.length === 0){
-            INSTRUCTIONS[wc++] = {tag: "LDC", val:Undefined}
-            console.log("MAYBE UNDEFINED");
+            INSTRUCTIONS[wc++] = {tag: "LDC", val:undefined}
         }
         let frst = true;
         for (let seq_part of sequence){
@@ -127,6 +126,8 @@ function compile_component(component, compile_environment) {
         const jump_on_false_instr = {tag: "JOF"};
         INSTRUCTIONS[wc++] = jump_on_false_instr;
         compile_component(component.cons, compile_environment);
+        console.log(`Cons`);
+        console.log(component.cons);
         const goto_instr = {tag: "GOTO"};
         INSTRUCTIONS[wc++] = goto_instr;
         const alternative_address = wc;
@@ -636,9 +637,9 @@ function run(){
     while (!(INSTRUCTIONS[pc].tag === "DONE")) {
         // Fetch next instruction and execute
         const instruction = INSTRUCTIONS[pc++];
-        // console.log(`Executes: ${instruction.tag} `);
+        console.log(`Executes: ${instruction.tag} `);
         execute_instruction(instruction);
-        // console.log(OS);
+        console.log(OS);
         // console.log(activeRoutines);
         // console.log(instruction)
         // Switch routine
@@ -684,6 +685,9 @@ function setV() {
   console.log(parsed_code)
   compile_program(parsed_code);
   run();
+  console.log(`Final value is ${OS.slice(-1)[0]}`)
+  console.log(address_to_JS_value(OS.slice(-1)[0]))
+  console.log(`with tag ${heap_get_tag(OS.slice(-1)[0])}`)
   document.getElementById("output_div").innerHTML = address_to_JS_value(OS.slice(-1)[0])
 
 }

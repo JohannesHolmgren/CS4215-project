@@ -469,12 +469,12 @@ const is_Number = (address) => heap_get_tag(address) === Number_tag;
 
 // channel
 // [1 byte tag, 1 byte ready to read, 1 byte ready to write,
-// 2 bytes #children, 1 byte unused]
+// 2 bytes #children (unused), 1 byte unused]
 // followed by the value sent on the channel
 // note: children is 0
 const heap_allocate_Channel = () => {
 	const channel_address = heap_allocate(Channel_tag, 2);
-	// Set ready to read and written to 0 (false)
+	// Set ready to read and written to to 0 (false)
 	heap_set_byte_at_offset(channel_address, 1, 0)
 	heap_set_byte_at_offset(channel_address, 2, 0)
 	return channel_address;
