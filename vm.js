@@ -299,40 +299,65 @@ function extendEnvironment(values, env){
         heap_set_child(newFrame, i, values[i]);
     }
     return heap_Environment_extend(newFrame, env);
-
-    /*
-    const newFrame = {};
-    for (let i=0; i<names.length;i++){
-        newFrame[names[i]] = values[i];
-    }
-    return new Pair(newFrame, env)
-    */
 }
 
 function read_channel(channel, receiver){
-    heap_set_channel_read(channel);
+    console.log(`trying to read from channel ${channel}`)
+    if (!heap_is_channel_read(channel)){
+        heap_set_channel_read(channel);
+    }
     if (heap_is_channel_written(channel)){
         const val = heap_read_channel(channel);
         OS.pop() // Remove channel address from OS
         OS.push(val);
         // Assign to receiver the value
         assign(receiver, val, E);
+
+        // Wake up dormant thread if not itself
+        unset_dormant_routine(channel);
     } else {
         pc--;
-        // console.warn("PC currently not updated in read to channel")
+        set_dormant_routine(channel, currentRoutine);
     }
 }
 
 function write_channel(channel) {
+    console.log(`trying to write to channel ${channel}`)
     if (!heap_is_channel_written(channel)){
         const val = OS.pop();
         heap_write_to_channel(channel, val);
-        const read_addr = heap_read_channel(channel);
     }
     if (!heap_is_channel_read(channel)){
         pc--;
         // console.warn("PC currently not updated in write to channel")
+        // Set to dormant
+        set_dormant_routine(channel, currentRoutine);
+    } else {
+        // Wake up dormant thread if not itself
+        unset_dormant_routine(channel);
     }
+}
+
+function unset_dormant_routine(channel){
+    const dormantRoutine = address_to_JS_value(heap_get_channel_dormant_routine(channel));
+    if(!is_active_routine(dormantRoutine)){
+        // Not active: wake up (put first in queue)
+        activeRoutines.unshift(dormantRoutine);
+        console.log(`Woke up ${dormantRoutine}`);
+    }
+}
+
+function set_dormant_routine(channel, routine){
+    // Remove from active routines
+    activeRoutines.splice(activeRoutines.indexOf(routine), 1);
+    const routine_addr = JS_value_to_address(routine);
+    heap_set_channel_dormant_routine(channel, routine_addr);
+    console.log(`Putting channel ${routine} to sleep: sweet dreams`)
+    console.log(`On channel with address ${channel}`)
+}
+
+function is_active_routine(routine){
+    return activeRoutines.includes(routine);
 }
 
 function execute_instruction(instruction) {
@@ -464,6 +489,7 @@ function execute_instruction(instruction) {
             write_channel(address);
         } else {
             const channel_address = peek(OS);
+            console.log(`Peeking at ${channel_address}`)
             read_channel(channel_address, instruction.left);
         }
     }
@@ -501,7 +527,6 @@ function createNewGoRoutine(){
 }
 
 function createNewGoRoutineFromCurrent(){
-    // HOW TO COPY ENVIRONMENT??
     const newEnv = heap_Environment_copy(E);
     const newRTS = [...RTS];
     const newOS = [...OS];
@@ -592,13 +617,14 @@ function run(){
     while (!(INSTRUCTIONS[pc].tag === "DONE")) {
         // Fetch next instruction and execute
         const instruction = INSTRUCTIONS[pc++];
-        console.log(`Executes: ${instruction.tag} `);
+        console.log(`${currentRoutine} Executes: ${instruction.tag} `);
         execute_instruction(instruction);
-        console.log(OS);
+        // console.log(OS);
         // console.log(activeRoutines);
         // console.log(instruction)
         // Switch routine
         rotateRoutine();
+        console.log(activeRoutines);
     }
 
 

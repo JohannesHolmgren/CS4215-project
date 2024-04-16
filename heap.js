@@ -471,9 +471,10 @@ const is_Number = (address) => heap_get_tag(address) === Number_tag;
 // [1 byte tag, 1 byte ready to read, 1 byte ready to write,
 // 2 bytes #children (unused), 1 byte unused]
 // followed by the value sent on the channel
+// followed by the index of a dormant routine
 // note: children is 0
 const heap_allocate_Channel = () => {
-	const channel_address = heap_allocate(Channel_tag, 2);
+	const channel_address = heap_allocate(Channel_tag, 3);
 	// Set ready to read and written to to 0 (false)
 	heap_set_byte_at_offset(channel_address, 1, 0)
 	heap_set_byte_at_offset(channel_address, 2, 0)
@@ -509,6 +510,14 @@ const heap_is_channel_written = (channel_address) => {
 	// Check if channel has been written to
 	const status = heap_get_byte_at_offset(channel_address, 2);
 	return (status === 1)
+}
+
+const heap_set_channel_dormant_routine = (channel, routine) => {
+	heap_set_child(channel, 2, routine);
+}
+
+const heap_get_channel_dormant_routine = (channel) => {
+	return heap_get_child(channel, 2);
 }
 
 //

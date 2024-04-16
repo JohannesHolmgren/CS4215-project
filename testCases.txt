@@ -54,7 +54,7 @@ var a = 100
 func addToA(x){
     a = a + x
 }
-go add(55)
+go addToA(55)
 1+1
 1+1
 1+1
