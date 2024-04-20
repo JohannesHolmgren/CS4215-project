@@ -1,10 +1,10 @@
-// Basic arithmetic
+// --- Basic arithmetic ---
 1 + 1
 4 - 3
 5 * 3
 10 / 2
 
-// Variable declaration
+// --- Variable declaration ---
 var x = 1
 x
 
@@ -15,7 +15,7 @@ x
 const x = 5
 x
 
-// Conditionals
+// --- Conditionals ---
 var v = 0
 if (1 > 0){
     v = 1
@@ -25,31 +25,28 @@ else{
     v = 2
 }
 
-// Loops
-var v = 0
-for (var i = 0; i < 5; i++){
-    v = v + i
-}
-
-// Functions
+// --- Functions ---
 func add(x, y){
     return x + y
 }
+add(1, 2)
 
 
-// Go calls
+// --- Go calls ---
 func add(x,y){
     return x + y
 }
 go add(1,2)
 
-var a = 100 // This is example of race condition, when we reach end of program program is done
+// expected race condition: reach end before go done
+var a = 100
 func addToA(x){
     a = a + x
 }
 go add(55)
 a
 
+// --- Go calls with time to finish ---
 var a = 100
 func addToA(x){
     a = a + x
@@ -61,8 +58,7 @@ go addToA(55)
 1+1
 a
 
-
-// Channels
+// --- Channels ---
 var c = make(chan)
 func add(x,y){
     c <- x + y
@@ -73,8 +69,68 @@ var a = 10
 a <- c
 a
 
-// Notes: 
-consts can be reassigned
-conditionals give weird results
-for statements don't seem to work
-super strange bug with function names with capital letters
+// --- Using functions as first class citizens (1) ---
+const result
+
+func make_f(x){
+    func f(y){result = x + y}
+    return f
+}
+
+const g = make_f(5)
+
+go g(7)
+
+// some code to allow the routine to finish
+1 + 1
+2 + 2
+
+// output the result
+result
+
+// --- Using functions as first class citizens (2) ---
+const result
+
+func run_f(f){
+    f(10)
+}
+
+func f(x){
+    result = x*5
+}
+
+go run_f(f)
+
+// Some code to let routine finish
+1 + 1
+2 + 2
+
+// Display result
+result
+
+
+// --- Thorough channel test ---
+func sendDouble(ch, val) {
+
+    func send(ch, val) {
+        ch <- val
+    }
+
+    const doub = val * 2
+    send(ch, doub)
+}
+const ch = make(chan)
+const ch2 = make(chan)
+const ch3 = make(chan)
+const x
+const y
+const z
+go sendDouble(ch, 5)
+go sendDouble(ch2, 10)
+go sendDouble(ch3, 15)
+
+x <- ch
+y <- ch2
+z <- ch3
+
+x + y + z

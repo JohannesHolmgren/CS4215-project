@@ -434,7 +434,7 @@ function execute_instruction(instruction) {
         const funcToCall = OS.pop();
         
         // Clone current E, RTS, OS, PC and do call with the new ones
-        const routine = createNewGoRoutineFromCurrent();
+        const routine = createNewGoRoutine();
         switchToRoutine(currentRoutine, routine);
 
         // On OS: all arguments above function itself
@@ -502,10 +502,10 @@ let currentRoutine;
 let activeRoutines = [];
 
 function createNewGoRoutine(){
-    const newEnv = initializeEmptyEnvironment();
+    const newEnv = initializeEmptyEnvironment(); // placeholder when used for not the base routine
     const newRTS = [];
     const newOS = [];
-    const newPC = 0;
+    const newPC = 0; // placeholder when used for not the base routine
     environments[nRoutines] = newEnv;
     runtimeStacks[nRoutines] = newRTS;
     operandStacks[nRoutines] = newOS;
