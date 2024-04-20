@@ -133,7 +133,7 @@ function compile_component(component, compile_environment) {
         compile_component(component.alt, compile_environment);
         goto_instr.addr = wc;
     }
-    else if (component.tag === "app"){ // Changed from 'args' to 'arguments' to match parser
+    else if (component.tag === "app"){
         compile_component(component.fun, compile_environment);
         const args = component.arguments;
         for (let arg of args){
@@ -169,7 +169,7 @@ function compile_component(component, compile_environment) {
             tag: "ASSIGN",
             pos: pos};
     }
-    else if (component.tag === "ReturnStatement"){ // Changed from 'ret' and 'component.argument' to match parser
+    else if (component.tag === "ReturnStatement"){
         compile_component(component.argument, compile_environment);
         INSTRUCTIONS[wc++] = {tag: "RESET"};
     }
@@ -213,7 +213,6 @@ function compile_component(component, compile_environment) {
             
         }
     }
-    // Possibly add assignment if needed by anything later
     else if (component.tag === undefined){
         // Do nothing
     }
@@ -302,7 +301,6 @@ function extendEnvironment(values, env){
 }
 
 function read_channel(channel, receiver){
-    console.log(`trying to read from channel ${channel}`)
     if (!heap_is_channel_read(channel)){
         heap_set_channel_read(channel);
     }
@@ -322,14 +320,12 @@ function read_channel(channel, receiver){
 }
 
 function write_channel(channel) {
-    console.log(`trying to write to channel ${channel}`)
     if (!heap_is_channel_written(channel)){
         const val = OS.pop();
         heap_write_to_channel(channel, val);
     }
     if (!heap_is_channel_read(channel)){
         pc--;
-        // console.warn("PC currently not updated in write to channel")
         // Set to dormant
         set_dormant_routine(channel, currentRoutine);
     } else {
@@ -343,7 +339,6 @@ function unset_dormant_routine(channel){
     if(!is_active_routine(dormantRoutine)){
         // Not active: wake up (put first in queue)
         activeRoutines.unshift(dormantRoutine);
-        console.log(`Woke up ${dormantRoutine}`);
     }
 }
 
@@ -352,8 +347,6 @@ function set_dormant_routine(channel, routine){
     activeRoutines.splice(activeRoutines.indexOf(routine), 1);
     const routine_addr = JS_value_to_address(routine);
     heap_set_channel_dormant_routine(channel, routine_addr);
-    console.log(`Putting channel ${routine} to sleep: sweet dreams`)
-    console.log(`On channel with address ${channel}`)
 }
 
 function is_active_routine(routine){
@@ -391,7 +384,7 @@ function execute_instruction(instruction) {
     }
     else if (instruction.tag === "JOF"){
         if(!OS.pop()){
-            pc = instruction.addr;  // Since we inc pc later, maybe -1?
+            pc = instruction.addr;
         }
     }
     else if (instruction.tag === "GOTO"){
@@ -448,13 +441,10 @@ function execute_instruction(instruction) {
         // Load arguments backwards since pushed so
         const frame_address = heap_allocate_Frame(instruction.arity);
         for (let i=instruction.arity-1; i>=0; i--){
-            // args[i] = OS.pop();
             heap_set_child(frame_address, i, args[i]);
         }
-        // const funcToCall = OS.pop();
         const callFrame = heap_allocate_Gocallframe(E, pc); // Different from above
         RTS.push(callFrame);
-        // E = extendEnvironment(args, heap_get_Closure_environment(funcToCall));
         E = heap_Environment_extend(frame_address, heap_get_Closure_environment(funcToCall));        
         pc = heap_get_Closure_pc(funcToCall);
 
@@ -489,12 +479,10 @@ function execute_instruction(instruction) {
             write_channel(address);
         } else {
             const channel_address = peek(OS);
-            console.log(`Peeking at ${channel_address}`)
             read_channel(channel_address, instruction.left);
         }
     }
     else {
-        console.log(instruction);
         throw new Error(`Undefined instruction: ${instruction.tag}`);
     }
 }
@@ -557,7 +545,6 @@ function switchToRoutine(from, to){
     OS = operandStacks[to];
     pc = pcs[to];
     currentRoutine = to;
-    // console.log(`Switches to routine ${currentRoutine}`);
 }
 
 function killRoutine(routine){
@@ -583,9 +570,6 @@ function initBaseRoutine(){
 
 function rotateRoutine(){
     /* Update to next routine in queue. */
-    // if (isActive(currentRoutine)) {
-    //    activeRoutines.push(currentRoutine);
-    // }
     const newRoutine = activeRoutines.shift();
     activeRoutines.push(newRoutine);
     switchToRoutine(currentRoutine, newRoutine);
@@ -624,7 +608,6 @@ function run(){
         // console.log(instruction)
         // Switch routine
         rotateRoutine();
-        console.log(activeRoutines);
     }
 
 
@@ -662,13 +645,9 @@ function test(testcase){
 function setV() {
   let code = document.getElementById("input_box").value;
   let parsed_code = parse(code);
-  // parsed_code = {"tag": "blk", "body": {"tag": "seq", "stmts": [{"tag": "fun", "sym": "foo", "prms": [], "body": {"tag": "ReturnStatement", "argument": {"tag": "lit", "val": 1}}}, {"tag": "app", "fun": {"tag": "nam", "sym": "foo"}, "arguments": []}]}};
   console.log(parsed_code)
   compile_program(parsed_code);
   run();
-  console.log(`Final value is ${OS.slice(-1)[0]}`)
-  console.log(address_to_JS_value(OS.slice(-1)[0]))
-  console.log(`with tag ${heap_get_tag(OS.slice(-1)[0])}`)
   document.getElementById("output_div").innerHTML = address_to_JS_value(OS.slice(-1)[0])
 
 }

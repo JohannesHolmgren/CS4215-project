@@ -664,9 +664,9 @@ const primitive_object = {};
 	math_PI: math_PI,
 	math_SQRT1_2: math_SQRT1_2,
 	math_SQRT2: math_SQRT2,
-}; */
+};
 
-/* for (const key in constants) primitive_object[key] = constants[key];
+for (const key in constants) primitive_object[key] = constants[key];
  */
 
 const compile_time_environment_extend = (vs, e) => {
@@ -677,14 +677,6 @@ const compile_time_environment_extend = (vs, e) => {
 /* // compile-time frames only need synbols (keys), no values
 const global_compile_frame = Object.keys(primitive_object);
 const global_compile_environment = [global_compile_frame];
+*/
 
-
-const prms = ["a", "b", "c"];
-
-console.log(global_compile_environment);
-let new_env = compile_time_environment_extend(prms, global_compile_environment);
-
-const empty_frame_address = heap_allocate_Frame(1);
-const heap_empty_Environment = heap_allocate_Environment(0);
-const environment = heap_Environment_extend(empty_frame_address, heap_empty_Environment); */
 const freeStart = free;
