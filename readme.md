@@ -1,4 +1,6 @@
-This is a project for the course Programming Language Implementation (CS4215). Overall all the goals which were set up were reached. The implementation has support for all of the basic sequential constructs except for for-loops, which were not added due to time constraints. For the concurrent constructs channels were used to enable concurrency control, Go statements were added to start concurrent parts of the program. A full list of all constructs available can be seen below. 
+This is a project for the course Programming Language Implementation (CS4215). The goal of this project was to create a language which is a subset of Go. The implementation contains a parser, compiler and virtual machine. The language has support for concurrency and the implementing language is JavaScript.
+
+A full list of all constructs available can be seen below. 
 
 * Variable declaration, both using var and const
 * Variable assignment, current supported types are numbers, Booleans and strings
